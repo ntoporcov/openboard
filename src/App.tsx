@@ -19,7 +19,15 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useMemo, useState, type CSSProperties, type HTMLAttributes } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type HTMLAttributes } from 'react'
+import {
+  defaultOpenCodeServerConfig,
+  loadOpenCodeServerConfig,
+  saveOpenCodeServerConfig,
+  validateOpenCodeConnection,
+  type OpenCodeHealthResponse,
+  type OpenCodeServerConfig,
+} from './opencodeClient'
 
 type ColumnId = 'inbox' | 'planned' | 'active' | 'done'
 
@@ -75,15 +83,72 @@ const initialCards: Card[] = [
   },
 ]
 
+type ConnectionState = {
+  config: OpenCodeServerConfig | null
+  health: OpenCodeHealthResponse | null
+  status: 'idle' | 'checking' | 'connected' | 'failed'
+  error: string | null
+}
+
 function App() {
   const [cards, setCards] = useState(initialCards)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [connectionModalOpen, setConnectionModalOpen] = useState(() => !loadOpenCodeServerConfig())
+  const [connection, setConnection] = useState<ConnectionState>(() => {
+    const config = loadOpenCodeServerConfig()
+
+    return {
+      config,
+      health: null,
+      status: config ? 'checking' : 'idle',
+      error: null,
+    }
+  })
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   const activeCard = cards.find((card) => card.id === activeId) ?? null
+
+  useEffect(() => {
+    if (!connection.config) {
+      return
+    }
+
+    let cancelled = false
+
+    validateOpenCodeConnection(connection.config)
+      .then((health) => {
+        if (cancelled) {
+          return
+        }
+
+        setConnection((currentConnection) => ({
+          ...currentConnection,
+          health,
+          status: 'connected',
+          error: null,
+        }))
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return
+        }
+
+        setConnection((currentConnection) => ({
+          ...currentConnection,
+          health: null,
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unable to connect to OpenCode.',
+        }))
+        setConnectionModalOpen(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [connection.config])
 
   function getColumnFromTarget(targetId: string): ColumnId | undefined {
     if (columns.some((column) => column.id === targetId)) {
@@ -132,6 +197,20 @@ function App() {
     })
   }
 
+  function handleConnectionValidated(config: OpenCodeServerConfig, health: OpenCodeHealthResponse) {
+    const savedConfig = saveOpenCodeServerConfig(config)
+
+    setConnection({
+      config: savedConfig,
+      health,
+      status: 'connected',
+      error: null,
+    })
+    setConnectionModalOpen(false)
+  }
+
+  const connectionLabel = getConnectionLabel(connection)
+
   return (
     <main className="min-h-svh bg-[#f5f5f7] text-[#1d1d1f]">
       <div className="mx-auto flex min-h-svh w-full max-w-[1500px] flex-col px-4 py-4 sm:px-6 lg:px-8">
@@ -150,9 +229,16 @@ function App() {
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-[#f5f5f7] px-3 py-1.5 text-sm text-[#6e6e73]">
-              <span className="size-2 rounded-full bg-[#34c759]" />
-              OpenCode local
+              <span className={classNames('size-2 rounded-full', getConnectionDotColor(connection.status))} />
+              {connectionLabel}
             </span>
+            <Button
+              className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#1d1d1f] shadow-sm transition hover:bg-[#f5f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              type="button"
+              onClick={() => setConnectionModalOpen(true)}
+            >
+              Connect
+            </Button>
             <Button className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#1d1d1f] shadow-sm transition hover:bg-[#f5f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]">
               New task
             </Button>
@@ -161,7 +247,7 @@ function App() {
 
         <section className="mb-4 grid gap-3 sm:grid-cols-3">
           <InfoCard label="Board" value="4 tasks" />
-          <InfoCard label="Session" value="Not connected" />
+          <InfoCard label="OpenCode" value={connection.health ? `v${connection.health.version}` : connectionLabel} />
           <InfoCard label="Mode" value="Human approved" />
         </section>
 
@@ -187,7 +273,135 @@ function App() {
           <DragOverlay>{activeCard ? <TaskCard card={activeCard} overlay /> : null}</DragOverlay>
         </DndContext>
       </div>
+
+      {connectionModalOpen ? (
+        <ConnectionModal
+          initialConfig={connection.config ?? defaultOpenCodeServerConfig}
+          initialError={connection.error}
+          onClose={() => setConnectionModalOpen(false)}
+          onValidated={handleConnectionValidated}
+        />
+      ) : null}
     </main>
+  )
+}
+
+function ConnectionModal({
+  initialConfig,
+  initialError,
+  onClose,
+  onValidated,
+}: {
+  initialConfig: OpenCodeServerConfig
+  initialError: string | null
+  onClose: () => void
+  onValidated: (config: OpenCodeServerConfig, health: OpenCodeHealthResponse) => void
+}) {
+  const [formConfig, setFormConfig] = useState(initialConfig)
+  const [status, setStatus] = useState<'idle' | 'checking'>('idle')
+  const [error, setError] = useState(initialError)
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setStatus('checking')
+    setError(null)
+
+    try {
+      const health = await validateOpenCodeConnection(formConfig)
+      onValidated(formConfig, health)
+    } catch (validationError) {
+      setError(
+        validationError instanceof Error
+          ? validationError.message
+          : 'Unable to validate the OpenCode connection.',
+      )
+    } finally {
+      setStatus('idle')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/20 px-4 py-6 backdrop-blur-sm">
+      <div className="w-full max-w-[480px] rounded-[30px] border border-black/10 bg-white p-5 shadow-[0_30px_90px_rgba(0,0,0,0.22)]">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-[-0.02em] text-[#1d1d1f]">Connect OpenCode</h2>
+            <p className="mt-1 text-sm leading-5 text-[#6e6e73]">
+              Validate an OpenCode server and cache the connection in this browser.
+            </p>
+          </div>
+          <Button
+            className="grid size-8 place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+            type="button"
+            aria-label="Close connection dialog"
+            onClick={onClose}
+          >
+            ×
+          </Button>
+        </div>
+
+        <form className="grid gap-4" onSubmit={handleSubmit}>
+          <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+            Server URL
+            <input
+              className="rounded-2xl border border-black/10 bg-[#f5f5f7] px-3 py-2.5 text-sm font-normal text-[#1d1d1f] outline-none transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+              type="url"
+              value={formConfig.baseUrl}
+              placeholder="http://127.0.0.1:4096"
+              required
+              onChange={(event) => setFormConfig({ ...formConfig, baseUrl: event.target.value })}
+            />
+          </label>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+              Username
+              <input
+                className="rounded-2xl border border-black/10 bg-[#f5f5f7] px-3 py-2.5 text-sm font-normal text-[#1d1d1f] outline-none transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+                type="text"
+                value={formConfig.username}
+                placeholder="opencode"
+                onChange={(event) => setFormConfig({ ...formConfig, username: event.target.value })}
+              />
+            </label>
+
+            <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+              Password
+              <input
+                className="rounded-2xl border border-black/10 bg-[#f5f5f7] px-3 py-2.5 text-sm font-normal text-[#1d1d1f] outline-none transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+                type="password"
+                value={formConfig.password}
+                placeholder="Optional"
+                onChange={(event) => setFormConfig({ ...formConfig, password: event.target.value })}
+              />
+            </label>
+          </div>
+
+          {error ? (
+            <p className="rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#1d1d1f] shadow-sm transition hover:bg-[#f5f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              type="button"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-full bg-[#1d1d1f] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              type="submit"
+              disabled={status === 'checking'}
+            >
+              {status === 'checking' ? 'Checking...' : 'Validate connection'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 
@@ -301,6 +515,38 @@ function TaskCard({
 
 function classNames(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ')
+}
+
+function getConnectionLabel(connection: ConnectionState) {
+  if (connection.status === 'checking') {
+    return 'Checking OpenCode'
+  }
+
+  if (connection.status === 'connected') {
+    return connection.config ? new URL(connection.config.baseUrl).host : 'OpenCode connected'
+  }
+
+  if (connection.status === 'failed') {
+    return 'OpenCode unavailable'
+  }
+
+  return 'Not connected'
+}
+
+function getConnectionDotColor(status: ConnectionState['status']) {
+  if (status === 'connected') {
+    return 'bg-[#34c759]'
+  }
+
+  if (status === 'checking') {
+    return 'bg-[#ffcc00]'
+  }
+
+  if (status === 'failed') {
+    return 'bg-[#ff3b30]'
+  }
+
+  return 'bg-[#86868b]'
 }
 
 export default App
