@@ -468,52 +468,58 @@ function App() {
       <div className="pointer-events-none absolute left-1/2 top-6 h-28 w-[min(760px,80vw)] -translate-x-1/2 rounded-full bg-white/70 blur-3xl" />
       <div
         className={classNames(
-          'relative flex min-h-svh w-full flex-col px-4 py-4 transition-[padding] duration-300 sm:px-6 lg:px-8',
-          sidebarState !== 'closed' && '2xl:pr-[548px]',
+          'relative flex min-h-svh w-full flex-col py-4',
         )}
       >
-        <header className="mb-4 flex flex-col gap-3 rounded-[32px] border border-white/70 bg-white/55 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_70px_rgba(0,64,128,0.12)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-[18px] bg-[linear-gradient(145deg,#0a84ff,#0066d6)] text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_28px_rgba(0,122,255,0.32)]">
-              OB
+        <div
+          className={classNames(
+            'sticky left-0 z-20 w-screen px-4 transition-[padding] duration-300 sm:px-6 lg:px-8',
+            sidebarState !== 'closed' && '2xl:pr-[548px]',
+          )}
+        >
+          <header className="mb-4 flex flex-col gap-3 rounded-[32px] border border-white/70 bg-white/55 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_70px_rgba(0,64,128,0.12)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-[18px] bg-[linear-gradient(145deg,#0a84ff,#0066d6)] text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_28px_rgba(0,122,255,0.32)]">
+                OB
+              </div>
+              <div>
+                <h1 className="text-[1.05rem] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
+                  OpenBoard
+                </h1>
+                <p className="text-sm text-[#6e6e73]">Kanban for AI coding work</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-[1.05rem] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
-                OpenBoard
-              </h1>
-              <p className="text-sm text-[#6e6e73]">Kanban for AI coding work</p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/50 px-3 py-1.5 text-sm text-[#6e6e73] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+                <span className={classNames('size-2 rounded-full', getConnectionDotColor(connection.status))} />
+                {connectionLabel}
+              </span>
+              <Button
+                className="rounded-full border border-white/70 bg-white/60 px-4 py-2 text-sm font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_22px_rgba(0,64,128,0.08)] backdrop-blur-xl transition hover:bg-white/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+                type="button"
+                onClick={() => setConnectionModalOpen(true)}
+              >
+                Connect
+              </Button>
+              <Button
+                className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.34)] transition hover:bg-[#0a84ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+                type="button"
+                onClick={() => setSidebarState('new')}
+              >
+                Create prep
+              </Button>
             </div>
-          </div>
+          </header>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/50 px-3 py-1.5 text-sm text-[#6e6e73] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
-              <span className={classNames('size-2 rounded-full', getConnectionDotColor(connection.status))} />
-              {connectionLabel}
-            </span>
-            <Button
-              className="rounded-full border border-white/70 bg-white/60 px-4 py-2 text-sm font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_22px_rgba(0,64,128,0.08)] backdrop-blur-xl transition hover:bg-white/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
-              type="button"
-              onClick={() => setConnectionModalOpen(true)}
-            >
-              Connect
-            </Button>
-            <Button
-              className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.34)] transition hover:bg-[#0a84ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
-              type="button"
-              onClick={() => setSidebarState('new')}
-            >
-              Create prep
-            </Button>
-          </div>
-        </header>
-
-        <PrepLane
-          connectionLabel={connection.health ? `OpenCode v${connection.health.version}` : connectionLabel}
-          prepSessions={prepSessions}
-          activePrepSessionId={activePrepSessionId}
-          onCreate={() => setSidebarState('new')}
-          onOpen={handleOpenPrepSession}
-        />
+          <PrepLane
+            connectionLabel={connection.health ? `OpenCode v${connection.health.version}` : connectionLabel}
+            prepSessions={prepSessions}
+            activePrepSessionId={activePrepSessionId}
+            onCreate={() => setSidebarState('new')}
+            onOpen={handleOpenPrepSession}
+          />
+        </div>
 
         <DndContext
           sensors={sensors}
@@ -522,7 +528,7 @@ function App() {
           onDragEnd={handleDragEnd}
         >
           <section
-            className="grid flex-1 grid-cols-[repeat(4,minmax(280px,1fr))] gap-3 pb-3"
+            className="grid flex-1 grid-cols-[repeat(4,minmax(230px,1fr))] gap-3 px-4 pb-3 sm:px-6 lg:px-8"
             aria-label="Kanban board"
           >
             {columns.map((column) => (
@@ -846,8 +852,8 @@ function PrepSidebar({
   }
 
   return (
-    <aside className="fixed inset-x-3 bottom-3 top-3 z-40 flex w-auto flex-col overflow-hidden rounded-[34px] border border-white/70 bg-[#f5f5f7]/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_30px_90px_rgba(0,28,64,0.24)] backdrop-blur-2xl sm:inset-x-auto sm:right-4 sm:w-[min(500px,calc(100vw-2rem))] 2xl:right-6">
-      <header className="border-b border-white/60 bg-white/72 px-5 py-4 backdrop-blur-2xl">
+    <aside className="fixed inset-x-3 bottom-3 top-3 z-40 flex w-auto flex-col overflow-hidden rounded-[34px] border border-white/55 bg-white/36 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_30px_90px_rgba(0,28,64,0.28)] backdrop-blur-[34px] backdrop-saturate-150 sm:inset-x-auto sm:right-4 sm:w-[min(500px,calc(100vw-2rem))] 2xl:right-6">
+      <header className="border-b border-white/45 bg-white/38 px-5 py-4 backdrop-blur-2xl backdrop-saturate-150">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Prep chat</p>
@@ -899,12 +905,12 @@ function PrepSidebar({
         />
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-white/[0.08] px-4 py-4">
             <MessageList messages={messages} busy={status === 'working'} />
             <div ref={bottomRef} />
           </div>
 
-          <form className="border-t border-white/60 bg-white/76 p-4 backdrop-blur-2xl" onSubmit={handleSubmit}>
+          <form className="border-t border-white/45 bg-white/42 p-4 backdrop-blur-2xl backdrop-saturate-150" onSubmit={handleSubmit}>
             {(error || localError) && (
               <p className="mb-3 rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
                 {localError ?? error}
