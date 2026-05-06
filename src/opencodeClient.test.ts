@@ -1,0 +1,114 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  createOpenCodeId,
+  createOpenCodeTextPart,
+  sendOpenCodePrompt,
+  type OpenCodeServerConfig,
+} from './opencodeClient'
+
+const config: OpenCodeServerConfig = {
+  baseUrl: 'http://127.0.0.1:4096/',
+  username: 'user',
+  password: 'pass',
+}
+
+describe('OpenCode chat client', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('creates OpenCode-style ascending identifiers', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
+    vi.stubGlobal('crypto', { getRandomValues: fillBytes(0) })
+
+    const first = createOpenCodeId('message')
+    const second = createOpenCodeId('message')
+
+    expect(first).toMatch(/^msg_[0-9a-f]{12}[0-9A-Za-z]{14}$/)
+    expect(second).toMatch(/^msg_[0-9a-f]{12}[0-9A-Za-z]{14}$/)
+    expect(first).toHaveLength(30)
+    expect(first.slice(4, 16)).toBe('bcfe56800001')
+    expect(second.slice(4, 16)).toBe('bcfe56800002')
+    expect(first < second).toBe(true)
+  })
+
+  it('creates text parts with OpenCode part identifiers', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_001)
+    vi.stubGlobal('crypto', { getRandomValues: fillBytes(1) })
+
+    const part = createOpenCodeTextPart('hello')
+
+    expect(part.id).toMatch(/^prt_[0-9a-f]{12}[0-9A-Za-z]{14}$/)
+    expect(part.id.slice(4, 16)).toBe('bcfe56801001')
+    expect(part).toMatchObject({ type: 'text', text: 'hello' })
+  })
+
+  it('sends prompt text parts to the scoped session message endpoint', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_002)
+    vi.stubGlobal('crypto', { getRandomValues: fillBytes(2) })
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ info: { id: 'msg_1', role: 'user', sessionID: 'ses_1' }, parts: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await sendOpenCodePrompt(config, {
+      sessionID: 'ses_1',
+      directory: '/Users/example/project',
+      text: 'prep this work',
+    })
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
+    expect(url.toString()).toBe(
+      'http://127.0.0.1:4096/session/ses_1/message?directory=%2FUsers%2Fexample%2Fproject',
+    )
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(String(init.body))).toEqual({
+      parts: [
+        {
+          id: 'prt_bcfe5680200122222222222222',
+          type: 'text',
+          text: 'prep this work',
+        },
+      ],
+    })
+    expect(new Headers(init.headers).get('Content-Type')).toBe('application/json')
+    expect(new Headers(init.headers).get('Authorization')).toBe('Basic dXNlcjpwYXNz')
+  })
+
+  it('can reuse caller-provided message and part IDs for optimistic chat', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ info: { id: 'msg_given', role: 'user', sessionID: 'ses_1' }, parts: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await sendOpenCodePrompt(config, {
+      sessionID: 'ses_1',
+      directory: '/Users/example/project',
+      text: 'prep this work',
+      messageID: 'msg_given',
+      part: { id: 'prt_given', type: 'text', text: 'prep this work' },
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
+    expect(JSON.parse(String(init.body))).toEqual({
+      messageID: 'msg_given',
+      parts: [{ id: 'prt_given', type: 'text', text: 'prep this work' }],
+    })
+  })
+})
+
+function fillBytes(value: number) {
+  return (bytes: Uint8Array) => {
+    bytes.fill(value)
+    return bytes
+  }
+}

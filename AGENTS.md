@@ -3,7 +3,7 @@
 ## Commands
 - Install with `npm ci` when starting from a clean checkout; `package-lock.json` is the source of truth.
 - Local dev server: `npm run dev`.
-- Verify changes with `npm run lint` and `npm run build`; there is no test script currently.
+- Verify changes with `npm run lint`, `npm run test`, and `npm run build`.
 - `npm run build` runs `tsc -b && vite build`, so it performs the typecheck and writes production artifacts.
 
 ## App Structure

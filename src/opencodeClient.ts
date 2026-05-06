@@ -56,6 +56,22 @@ export type OpenCodeMessagePart = {
   type: string
   text?: string
   messageID?: string
+  filename?: string
+  mime?: string
+  url?: string
+  tool?: string
+  state?: {
+    status?: string
+    title?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export type OpenCodeTextPartInput = {
+  id: string
+  type: 'text'
+  text: string
 }
 
 export type OpenCodeEventEnvelope = {
@@ -81,6 +97,13 @@ export const defaultOpenCodeServerConfig: OpenCodeServerConfig = {
 }
 
 const connectionStorageKey = 'openboard.opencode.connection'
+const idLength = 26
+const idPrefixes = {
+  message: 'msg',
+  part: 'prt',
+} as const
+let lastIdTimestamp = 0
+let idCounter = 0
 
 function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.trim().replace(/\/+$/, '')
@@ -128,6 +151,50 @@ function requestUrl(config: OpenCodeServerConfig, path: string, query?: Record<s
   })
 
   return url
+}
+
+export function createOpenCodeId(prefix: keyof typeof idPrefixes) {
+  return createAscendingId(prefix)
+}
+
+export function createOpenCodeTextPart(text: string): OpenCodeTextPartInput {
+  return {
+    id: createOpenCodeId('part'),
+    type: 'text' as const,
+    text,
+  }
+}
+
+function createAscendingId(prefix: keyof typeof idPrefixes, timestamp = Date.now()) {
+  if (timestamp !== lastIdTimestamp) {
+    lastIdTimestamp = timestamp
+    idCounter = 0
+  }
+
+  idCounter += 1
+
+  const encodedTime = BigInt(timestamp) * BigInt(0x1000) + BigInt(idCounter)
+  const timeBytes = new Uint8Array(6)
+
+  for (let index = 0; index < 6; index += 1) {
+    timeBytes[index] = Number((encodedTime >> BigInt(40 - 8 * index)) & BigInt(0xff))
+  }
+
+  return `${idPrefixes[prefix]}_${bytesToHex(timeBytes)}${randomBase62(idLength - 12)}`
+}
+
+function bytesToHex(bytes: Uint8Array) {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+function randomBase62(length: number) {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  const bytes = new Uint8Array(length)
+  crypto.getRandomValues(bytes)
+
+  return Array.from(bytes, (byte) => chars[byte % chars.length]).join('')
 }
 
 export function loadOpenCodeServerConfig() {
@@ -228,7 +295,7 @@ export async function listOpenCodeMessages(
 
 export async function sendOpenCodePrompt(
   config: OpenCodeServerConfig,
-  input: { sessionID: string; directory: string; text: string },
+  input: { sessionID: string; directory: string; text: string; messageID?: string; part?: OpenCodeTextPartInput },
 ) {
   const url = requestUrl(config, `/session/${input.sessionID}/message`, { directory: input.directory })
   const response = await fetch(
@@ -237,13 +304,8 @@ export async function sendOpenCodePrompt(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        parts: [
-          {
-            id: `part_${Date.now().toString(36)}`,
-            type: 'text',
-            text: input.text,
-          },
-        ],
+        ...(input.messageID ? { messageID: input.messageID } : {}),
+        parts: [input.part ?? createOpenCodeTextPart(input.text)],
       }),
     }),
   )

@@ -22,13 +22,17 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type FormEvent,
   type HTMLAttributes,
+  type KeyboardEvent,
 } from 'react'
 import {
+  createOpenCodeId,
   createOpenCodeSession,
+  createOpenCodeTextPart,
   defaultOpenCodeServerConfig,
   listOpenCodeMessages,
   loadOpenCodeServerConfig,
@@ -370,11 +374,32 @@ function App() {
       return
     }
 
-    await sendOpenCodePrompt(connection.config, {
-      sessionID: activePrepSession.opencodeSessionId,
-      directory: activePrepSession.projectDirectory,
-      text,
-    })
+    const messageID = createOpenCodeId('message')
+    const part = createOpenCodeTextPart(text)
+    const optimisticMessage: OpenCodeMessage = {
+      info: {
+        id: messageID,
+        role: 'user',
+        sessionID: activePrepSession.opencodeSessionId,
+        time: { created: Date.now() },
+      },
+      parts: [{ ...part, messageID }],
+    }
+
+    setMessages((currentMessages) => [...currentMessages, optimisticMessage])
+
+    try {
+      await sendOpenCodePrompt(connection.config, {
+        sessionID: activePrepSession.opencodeSessionId,
+        directory: activePrepSession.projectDirectory,
+        text,
+        messageID,
+        part,
+      })
+    } catch (error) {
+      setMessages((currentMessages) => currentMessages.filter((message) => message.info.id !== messageID))
+      throw error
+    }
 
     const nextMessages = await listOpenCodeMessages(connection.config, {
       sessionID: activePrepSession.opencodeSessionId,
@@ -694,6 +719,12 @@ function PrepSidebar({
   const [draft, setDraft] = useState('')
   const [status, setStatus] = useState<'idle' | 'working'>('idle')
   const [localError, setLocalError] = useState<string | null>(null)
+  const bottomRef = useRef<HTMLDivElement | null>(null)
+  const latestEvent = events[0]
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: 'end' })
+  }, [messages, status, localError, error])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -713,6 +744,15 @@ function PrepSidebar({
     } finally {
       setStatus('idle')
     }
+  }
+
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
+      return
+    }
+
+    event.preventDefault()
+    event.currentTarget.form?.requestSubmit()
   }
 
   return (
@@ -744,14 +784,19 @@ function PrepSidebar({
         <CreatePrepSessionForm connected={connected} onCreate={onCreate} />
       ) : (
         <>
-          <div className="border-b border-white/60 bg-white/45 px-5 py-3 backdrop-blur-xl">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Project</p>
-            <p className="mt-1 truncate text-sm font-medium text-[#1d1d1f]">{session?.projectDirectory}</p>
-            <p className="mt-2 text-xs text-[#86868b]">OpenCode session: {session?.opencodeSessionId}</p>
+          <div className="grid gap-3 border-b border-white/60 bg-white/45 px-5 py-3 backdrop-blur-xl">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Project</p>
+              <p className="mt-1 truncate text-sm font-medium text-[#1d1d1f]">{session?.projectDirectory}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <ChatMeta label="OpenCode ID" value={session?.opencodeSessionId ?? 'No session'} />
+              <ChatMeta label="Stream" value={latestEvent ? `${latestEvent.type} ${formatRelativeTime(latestEvent.at)}` : 'Listening'} />
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-            <MessageList messages={messages} />
+            <MessageList messages={messages} busy={status === 'working'} />
             {events.length > 0 ? (
               <div className="mt-4 rounded-3xl border border-white/70 bg-white/62 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_24px_rgba(0,64,128,0.08)] backdrop-blur-xl">
                 <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Live events</p>
@@ -764,6 +809,7 @@ function PrepSidebar({
                 </div>
               </div>
             ) : null}
+            <div ref={bottomRef} />
           </div>
 
           <form className="border-t border-white/60 bg-white/68 p-4 backdrop-blur-2xl" onSubmit={handleSubmit}>
@@ -777,8 +823,10 @@ function PrepSidebar({
               value={draft}
               placeholder="Prep the session: goals, repo context, files to inspect, constraints, and acceptance criteria..."
               onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
             />
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-xs text-[#86868b]">Enter sends. Shift Enter adds a line.</p>
               <Button
                 className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.30)] transition hover:bg-[#0a84ff] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
                 type="submit"
@@ -862,10 +910,19 @@ function CreatePrepSessionForm({
   )
 }
 
-function MessageList({ messages }: { messages: OpenCodeMessage[] }) {
+function ChatMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/70 bg-white/55 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+      <p className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-[#86868b]">{label}</p>
+      <p className="mt-1 truncate text-xs font-medium text-[#1d1d1f]">{value}</p>
+    </div>
+  )
+}
+
+function MessageList({ messages, busy }: { messages: OpenCodeMessage[]; busy: boolean }) {
   if (messages.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-[#007aff]/18 bg-white/55 px-4 py-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+      <div className="rounded-[32px] border border-dashed border-[#007aff]/18 bg-white/55 px-4 py-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
         <p className="text-sm font-medium text-[#1d1d1f]">No prep messages yet</p>
         <p className="mt-1 text-sm leading-5 text-[#6e6e73]">
           Start by asking OpenCode to help shape the work before assigning cards to agents.
@@ -877,30 +934,61 @@ function MessageList({ messages }: { messages: OpenCodeMessage[] }) {
   return (
     <div className="grid gap-3">
       {messages.map((message) => (
-        <div
-          key={message.info.id}
-          className={classNames(
-            'rounded-3xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_24px_rgba(0,64,128,0.07)] backdrop-blur-xl',
-            message.info.role === 'user'
-              ? 'border-[#007aff]/18 bg-[#eaf4ff]/82'
-              : 'border-white/70 bg-white/64',
-          )}
-        >
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">{message.info.role}</p>
-            {message.info.time?.created ? (
-              <p className="text-xs text-[#86868b]">{formatRelativeTime(message.info.time.created)}</p>
-            ) : null}
-          </div>
-          <div className="grid gap-2 text-sm leading-5 text-[#1d1d1f]">
-            {message.parts.length > 0 ? (
-              message.parts.map((part) => <MessagePart key={part.id} part={part} />)
-            ) : (
-              <p className="text-[#86868b]">Message metadata received.</p>
-            )}
-          </div>
-        </div>
+        <MessageBubble key={message.info.id} message={message} />
       ))}
+      {busy ? <TypingIndicator /> : null}
+    </div>
+  )
+}
+
+function MessageBubble({ message }: { message: OpenCodeMessage }) {
+  const user = message.info.role === 'user'
+  const errorText = formatMessageError(message.info.error)
+
+  return (
+    <div className={classNames('flex', user ? 'justify-end' : 'justify-start')}>
+      <article
+        className={classNames(
+          'w-[92%] rounded-[28px] border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_24px_rgba(0,64,128,0.07)] backdrop-blur-xl sm:w-[86%]',
+          user ? 'border-[#007aff]/18 bg-[#eaf4ff]/82' : 'border-white/70 bg-white/64',
+          errorText ? 'border-[#ff3b30]/18 bg-[#fff3f2]/82' : undefined,
+        )}
+      >
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className={classNames(
+                'grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold',
+                user ? 'bg-[#007aff] text-white' : 'bg-[#1d1d1f] text-white',
+              )}
+            >
+              {user ? 'You' : 'OC'}
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">
+                {user ? 'You' : message.info.agent || 'OpenCode'}
+              </p>
+              {!user && message.info.model ? (
+                <p className="truncate text-xs text-[#86868b]">
+                  {message.info.model.providerID}/{message.info.model.modelID}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          {message.info.time?.created ? (
+            <p className="shrink-0 text-xs text-[#86868b]">{formatRelativeTime(message.info.time.created)}</p>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2 text-sm leading-5 text-[#1d1d1f]">
+          {errorText ? <MessageError text={errorText} /> : null}
+          {message.parts.length > 0 ? (
+            message.parts.map((part) => <MessagePart key={part.id} part={part} />)
+          ) : !errorText ? (
+            <p className="text-[#86868b]">Message metadata received.</p>
+          ) : null}
+        </div>
+      </article>
     </div>
   )
 }
@@ -910,7 +998,70 @@ function MessagePart({ part }: { part: OpenCodeMessagePart }) {
     return <p className="whitespace-pre-wrap">{part.text}</p>
   }
 
-  return <p className="text-[#6e6e73]">{part.type}</p>
+  if (part.type === 'file') {
+    return (
+      <div className="rounded-2xl border border-black/5 bg-white/60 px-3 py-2">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">File</p>
+        <p className="mt-1 truncate text-sm font-medium text-[#1d1d1f]">{part.filename ?? part.url ?? 'Attachment'}</p>
+      </div>
+    )
+  }
+
+  if (part.type === 'tool') {
+    return (
+      <div className="rounded-2xl border border-black/5 bg-white/60 px-3 py-2">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Tool</p>
+        <p className="mt-1 text-sm font-medium text-[#1d1d1f]">{part.tool ?? part.state?.title ?? 'Tool call'}</p>
+        {part.state?.status ? <p className="mt-1 text-xs text-[#86868b]">{part.state.status}</p> : null}
+      </div>
+    )
+  }
+
+  return <p className="rounded-2xl bg-black/[0.035] px-3 py-2 text-[#6e6e73]">{part.type}</p>
+}
+
+function MessageError({ text }: { text: string }) {
+  return (
+    <div className="rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-[#b42318]">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em]">OpenCode error</p>
+      <p className="mt-1 whitespace-pre-wrap">{text}</p>
+    </div>
+  )
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/64 px-3 py-2 text-sm text-[#6e6e73] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_24px_rgba(0,64,128,0.07)] backdrop-blur-xl">
+        <span className="size-2 animate-pulse rounded-full bg-[#007aff]" />
+        Waiting for OpenCode
+      </div>
+    </div>
+  )
+}
+
+function formatMessageError(error: unknown) {
+  if (!error) {
+    return null
+  }
+
+  if (typeof error === 'string') {
+    return error
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const data = 'data' in error ? error.data : undefined
+
+    if (typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string') {
+      return data.message
+    }
+
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message
+    }
+  }
+
+  return 'OpenCode returned an error for this message.'
 }
 
 function KanbanColumn({ column, cards }: { column: Column; cards: Card[] }) {
