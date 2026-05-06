@@ -87,11 +87,11 @@ const initialCards: Card[] = []
 type AreaAgentSelections = Record<BoardAreaId, string>
 
 const defaultAgentSelections: AreaAgentSelections = {
-  prep: 'plan',
-  plan: 'plan',
-  build: 'build',
-  review: 'build',
-  test: 'build',
+  prep: 'openboard-prepper',
+  plan: 'openboard-planner',
+  build: 'openboard-builder',
+  review: 'openboard-reviewer',
+  test: 'openboard-tester',
 }
 
 const agentSelectionsStorageKey = 'openboard.agentSelections.v1'
@@ -1305,23 +1305,23 @@ function KanbanColumn({
       ref={setNodeRef}
     >
       <header className="mb-3 flex items-start justify-between gap-4 px-1 py-1">
-        <div>
-          <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-[#1d1d1f]">
-            {column.title}
-          </h2>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-[#1d1d1f]">
+              {column.title}
+            </h2>
+            <span className="grid size-6 place-items-center rounded-full border border-white/70 bg-white/58 text-[0.7rem] font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+              {cards.length}
+            </span>
+          </div>
           <p className="mt-0.5 text-sm text-[#86868b]">{column.description}</p>
         </div>
-        <div className="grid justify-items-end gap-2">
-          <span className="grid size-7 place-items-center rounded-full border border-white/70 bg-white/58 text-xs font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
-            {cards.length}
-          </span>
-          <AreaAgentSelect
-            agents={agents}
-            areaLabel={column.title}
-            value={selectedAgent}
-            onChange={onAgentSelected}
-          />
-        </div>
+        <AreaAgentSelect
+          agents={agents}
+          areaLabel={column.title}
+          value={selectedAgent}
+          onChange={onAgentSelected}
+        />
       </header>
 
       <SortableContext items={cardIds} strategy={rectSortingStrategy}>

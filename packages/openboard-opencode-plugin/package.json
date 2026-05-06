@@ -1,0 +1,27 @@
+{
+  "name": "openboard-opencode-plugin",
+  "version": "0.1.0",
+  "description": "OpenCode plugin and board agents for OpenBoard.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "agents",
+    "README.md"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "openboard"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.14.39"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
