@@ -706,7 +706,7 @@ function PrepLane({
         <div>
           <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-[#1d1d1f]">Prep area</h2>
           <p className="mt-0.5 text-sm text-[#86868b]">
-            Board-wide planning sessions. Each prep session is pinned to its own OpenCode project.
+            Planning sessions pinned to their OpenCode projects.
           </p>
         </div>
         <Button
