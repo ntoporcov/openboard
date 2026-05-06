@@ -783,6 +783,7 @@ function PrepSidebar({
   const [localError, setLocalError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const latestEvent = events[0]
+  const streamLabel = latestEvent ? `${latestEvent.type} ${formatRelativeTime(latestEvent.at)}` : 'Listening'
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' })
@@ -840,28 +841,48 @@ function PrepSidebar({
   }
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[520px] flex-col border-l border-white/65 bg-white/58 shadow-[inset_1px_0_0_rgba(255,255,255,0.75),0_30px_90px_rgba(0,28,64,0.20)] backdrop-blur-2xl">
-      <header className="border-b border-white/60 bg-white/55 px-5 py-4 backdrop-blur-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+    <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[520px] flex-col border-l border-white/65 bg-[#f5f5f7]/86 shadow-[inset_1px_0_0_rgba(255,255,255,0.75),0_30px_90px_rgba(0,28,64,0.20)] backdrop-blur-2xl">
+      <header className="border-b border-white/60 bg-white/72 px-5 py-4 backdrop-blur-2xl">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Prep chat</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-[#1d1d1f]">
+            <h2 className="mt-1 truncate text-lg font-semibold tracking-[-0.02em] text-[#1d1d1f]">
               {mode === 'new' ? 'Create OpenCode session' : session?.title}
             </h2>
           </div>
-          <Button
-            className="grid size-8 place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
-            type="button"
-            aria-label="Close prep chat"
-            onClick={onClose}
-          >
-            ×
-          </Button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {mode === 'open' ? (
+              <details className="group relative">
+                <summary className="grid size-8 cursor-pointer list-none place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff] [&::-webkit-details-marker]:hidden" aria-label="Prep session options">
+                  <span className="text-xl leading-none">…</span>
+                </summary>
+                <div className="absolute right-0 top-10 z-10 w-80 rounded-[24px] border border-white/70 bg-white/90 p-3 shadow-[0_18px_50px_rgba(0,28,64,0.18)] backdrop-blur-2xl">
+                  <div className="grid gap-2 text-sm">
+                    <OptionDetail label="Project" value={session?.projectDirectory ?? 'No project'} />
+                    <OptionDetail label="OpenCode ID" value={session?.opencodeSessionId ?? 'No session'} />
+                    <OptionDetail label="Stream" value={streamLabel} />
+                  </div>
+                  <Button
+                    className="mt-3 w-full rounded-full border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm font-semibold text-[#b42318] transition hover:bg-[#ff3b30]/10 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff3b30]"
+                    type="button"
+                    disabled={deleteStatus === 'deleting'}
+                    onClick={handleDelete}
+                  >
+                    {deleteStatus === 'deleting' ? 'Deleting...' : 'Delete prep session'}
+                  </Button>
+                </div>
+              </details>
+            ) : null}
+            <Button
+              className="grid size-8 place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              type="button"
+              aria-label="Close prep chat"
+              onClick={onClose}
+            >
+              ×
+            </Button>
+          </div>
         </div>
-        <p className="mt-3 rounded-2xl border border-[#007aff]/20 bg-[#eaf4ff]/80 px-3 py-2 text-sm leading-5 text-[#1d1d1f] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-          Prep this session here first: clarify scope, identify the project directory, gather constraints, and
-          only then delegate concrete work to the agent cards below.
-        </p>
       </header>
 
       {mode === 'new' ? (
@@ -873,52 +894,19 @@ function PrepSidebar({
         />
       ) : (
         <>
-          <div className="grid gap-3 border-b border-white/60 bg-white/45 px-5 py-3 backdrop-blur-xl">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Project</p>
-              <p className="mt-1 truncate text-sm font-medium text-[#1d1d1f]">{session?.projectDirectory}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <ChatMeta label="OpenCode ID" value={session?.opencodeSessionId ?? 'No session'} />
-              <ChatMeta label="Stream" value={latestEvent ? `${latestEvent.type} ${formatRelativeTime(latestEvent.at)}` : 'Listening'} />
-            </div>
-            <div className="flex justify-end">
-              <Button
-                className="rounded-full border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-1.5 text-xs font-semibold text-[#b42318] transition hover:bg-[#ff3b30]/10 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff3b30]"
-                type="button"
-                disabled={deleteStatus === 'deleting'}
-                onClick={handleDelete}
-              >
-                {deleteStatus === 'deleting' ? 'Deleting...' : 'Delete prep session'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             <MessageList messages={messages} busy={status === 'working'} />
-            {events.length > 0 ? (
-              <div className="mt-4 rounded-3xl border border-white/70 bg-white/62 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_24px_rgba(0,64,128,0.08)] backdrop-blur-xl">
-                <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Live events</p>
-                <div className="grid gap-1.5">
-                  {events.map((event) => (
-                    <p key={event.id} className="text-xs text-[#6e6e73]">
-                      {event.type} · {formatRelativeTime(event.at)}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            ) : null}
             <div ref={bottomRef} />
           </div>
 
-          <form className="border-t border-white/60 bg-white/68 p-4 backdrop-blur-2xl" onSubmit={handleSubmit}>
+          <form className="border-t border-white/60 bg-white/76 p-4 backdrop-blur-2xl" onSubmit={handleSubmit}>
             {(error || localError) && (
               <p className="mb-3 rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
                 {localError ?? error}
               </p>
             )}
             <textarea
-              className="min-h-28 w-full resize-none rounded-3xl border border-white/70 bg-white/64 px-4 py-3 text-sm leading-5 text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+              className="min-h-24 w-full resize-none rounded-[24px] border border-black/10 bg-white px-4 py-3 text-sm leading-5 text-[#1d1d1f] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] outline-none transition focus:border-[#007aff]/50 focus:ring-4 focus:ring-[#007aff]/10"
               value={draft}
               placeholder="Prep the session: goals, repo context, files to inspect, constraints, and acceptance criteria..."
               onChange={(event) => setDraft(event.target.value)}
@@ -1047,9 +1035,9 @@ function CreatePrepSessionForm({
   )
 }
 
-function ChatMeta({ label, value }: { label: string; value: string }) {
+function OptionDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/55 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+    <div className="rounded-2xl bg-black/[0.035] px-3 py-2">
       <p className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-[#86868b]">{label}</p>
       <p className="mt-1 truncate text-xs font-medium text-[#1d1d1f]">{value}</p>
     </div>
@@ -1059,17 +1047,18 @@ function ChatMeta({ label, value }: { label: string; value: string }) {
 function MessageList({ messages, busy }: { messages: OpenCodeMessage[]; busy: boolean }) {
   if (messages.length === 0) {
     return (
-      <div className="rounded-[32px] border border-dashed border-[#007aff]/18 bg-white/55 px-4 py-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
-        <p className="text-sm font-medium text-[#1d1d1f]">No prep messages yet</p>
+      <div className="mx-auto mt-2 max-w-[360px] rounded-[24px] bg-black/[0.045] px-4 py-3 text-center">
+        <p className="text-sm font-semibold text-[#1d1d1f]">Prep before delegating</p>
         <p className="mt-1 text-sm leading-5 text-[#6e6e73]">
-          Start by asking OpenCode to help shape the work before assigning cards to agents.
+          Clarify scope, gather constraints, and identify the project context here. Once the thread is ready,
+          delegate concrete work to the agent cards below.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {messages.map((message) => (
         <MessageBubble key={message.info.id} message={message} />
       ))}
@@ -1086,17 +1075,17 @@ function MessageBubble({ message }: { message: OpenCodeMessage }) {
     <div className={classNames('flex', user ? 'justify-end' : 'justify-start')}>
       <article
         className={classNames(
-          'w-[92%] rounded-[28px] border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_24px_rgba(0,64,128,0.07)] backdrop-blur-xl sm:w-[86%]',
-          user ? 'border-[#007aff]/18 bg-[#eaf4ff]/82' : 'border-white/70 bg-white/64',
-          errorText ? 'border-[#ff3b30]/18 bg-[#fff3f2]/82' : undefined,
+          user
+            ? 'max-w-[78%] rounded-[22px] rounded-br-md bg-[#007aff] px-4 py-2.5 text-white shadow-[0_8px_20px_rgba(0,122,255,0.22)]'
+            : 'w-full px-1 py-1 text-[#1d1d1f]',
         )}
       >
-        <div className="mb-2 flex items-center justify-between gap-3">
+        <div className={classNames('mb-1.5 flex items-center justify-between gap-3', user && 'hidden')}>
           <div className="flex min-w-0 items-center gap-2">
             <span
               className={classNames(
                 'grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold',
-                user ? 'bg-[#007aff] text-white' : 'bg-[#1d1d1f] text-white',
+                user ? 'bg-white/20 text-white' : 'bg-[#1d1d1f] text-white',
               )}
             >
               {user ? 'You' : 'OC'}
@@ -1117,14 +1106,17 @@ function MessageBubble({ message }: { message: OpenCodeMessage }) {
           ) : null}
         </div>
 
-        <div className="grid gap-2 text-sm leading-5 text-[#1d1d1f]">
+        <div className={classNames('grid gap-2 text-sm leading-5', user ? 'text-white' : 'text-[#1d1d1f]')}>
           {errorText ? <MessageError text={errorText} /> : null}
           {message.parts.length > 0 ? (
             message.parts.map((part) => <MessagePart key={part.id} part={part} />)
           ) : !errorText ? (
-            <p className="text-[#86868b]">Message metadata received.</p>
+            <p className={classNames(user ? 'text-white/70' : 'text-[#86868b]')}>Message metadata received.</p>
           ) : null}
         </div>
+        {user && message.info.time?.created ? (
+          <p className="mt-1 text-right text-[0.68rem] text-white/70">{formatRelativeTime(message.info.time.created)}</p>
+        ) : null}
       </article>
     </div>
   )
@@ -1137,7 +1129,7 @@ function MessagePart({ part }: { part: OpenCodeMessagePart }) {
 
   if (part.type === 'file') {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/60 px-3 py-2">
+      <div className="rounded-2xl border border-black/5 bg-white/70 px-3 py-2 text-[#1d1d1f]">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">File</p>
         <p className="mt-1 truncate text-sm font-medium text-[#1d1d1f]">{part.filename ?? part.url ?? 'Attachment'}</p>
       </div>
@@ -1146,7 +1138,7 @@ function MessagePart({ part }: { part: OpenCodeMessagePart }) {
 
   if (part.type === 'tool') {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/60 px-3 py-2">
+      <div className="rounded-2xl border border-black/5 bg-white/70 px-3 py-2 text-[#1d1d1f]">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Tool</p>
         <p className="mt-1 text-sm font-medium text-[#1d1d1f]">{part.tool ?? part.state?.title ?? 'Tool call'}</p>
         {part.state?.status ? <p className="mt-1 text-xs text-[#86868b]">{part.state.status}</p> : null}
@@ -1169,7 +1161,7 @@ function MessageError({ text }: { text: string }) {
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/64 px-3 py-2 text-sm text-[#6e6e73] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_24px_rgba(0,64,128,0.07)] backdrop-blur-xl">
+      <div className="inline-flex items-center gap-2 rounded-full bg-black/[0.045] px-3 py-2 text-sm text-[#6e6e73]">
         <span className="size-2 animate-pulse rounded-full bg-[#007aff]" />
         Waiting for OpenCode
       </div>
