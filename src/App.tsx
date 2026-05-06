@@ -1,3 +1,4 @@
+import { Button } from '@base-ui/react/button'
 import {
   DndContext,
   DragOverlay,
@@ -19,9 +20,8 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useMemo, useState, type CSSProperties, type HTMLAttributes } from 'react'
-import './App.css'
 
-type ColumnId = 'ideas' | 'ready' | 'active' | 'review'
+type ColumnId = 'inbox' | 'planned' | 'active' | 'done'
 
 type Card = {
   id: string
@@ -38,55 +38,39 @@ type Column = {
 }
 
 const columns: Column[] = [
-  {
-    id: 'ideas',
-    title: 'Ideas',
-    description: 'Raw product thoughts and user requests.',
-  },
-  {
-    id: 'ready',
-    title: 'Ready',
-    description: 'Scoped cards ready to send to OpenCode.',
-  },
-  {
-    id: 'active',
-    title: 'In Flight',
-    description: 'Tasks currently paired with an AI coding session.',
-  },
-  {
-    id: 'review',
-    title: 'Review',
-    description: 'Changes that need human approval.',
-  },
+  { id: 'inbox', title: 'Inbox', description: 'New thoughts and requests.' },
+  { id: 'planned', title: 'Planned', description: 'Ready for an AI session.' },
+  { id: 'active', title: 'Active', description: 'Currently in progress.' },
+  { id: 'done', title: 'Done', description: 'Ready to review or ship.' },
 ]
 
 const initialCards: Card[] = [
   {
     id: 'card-1',
-    title: 'Shape OpenCode session API',
-    prompt: 'Define how board cards become OpenCode tasks and stream progress back.',
-    status: 'ideas',
-    agent: 'Architect',
+    title: 'Define OpenCode handoff',
+    prompt: 'Decide how a board card becomes a scoped OpenCode task.',
+    status: 'inbox',
+    agent: 'Planner',
   },
   {
     id: 'card-2',
-    title: 'Drag cards across workflow',
-    prompt: 'Create a fast kanban interaction model that works on desktop and touch.',
-    status: 'ready',
-    agent: 'Builder',
+    title: 'Design task context panel',
+    prompt: 'Show prompt, affected files, test output, and current status in one place.',
+    status: 'planned',
+    agent: 'Designer',
   },
   {
     id: 'card-3',
-    title: 'Summarize task context',
-    prompt: 'Condense title, acceptance criteria, and files into a prompt package.',
+    title: 'Stream coding progress',
+    prompt: 'Display OpenCode activity as a calm, readable timeline.',
     status: 'active',
-    agent: 'Planner',
+    agent: 'Builder',
   },
   {
     id: 'card-4',
     title: 'Review generated diff',
-    prompt: 'Present code changes, test output, and risk notes before merge.',
-    status: 'review',
+    prompt: 'Summarize code changes, checks, and risks before the user approves.',
+    status: 'done',
     agent: 'Reviewer',
   },
 ]
@@ -100,6 +84,7 @@ function App() {
   )
 
   const activeCard = cards.find((card) => card.id === activeId) ?? null
+
   function getColumnFromTarget(targetId: string): ColumnId | undefined {
     if (columns.some((column) => column.id === targetId)) {
       return targetId as ColumnId
@@ -148,70 +133,99 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="hero-panel" aria-labelledby="app-title">
-        <div>
-          <p className="eyebrow">OpenBoard</p>
-          <h1 id="app-title">An AI-powered kanban board for OpenCode work.</h1>
-          <p className="hero-copy">
-            Capture intent, move work through the board, and hand focused cards to
-            OpenCode as implementation-ready tasks.
-          </p>
-        </div>
-
-        <aside className="client-card" aria-label="OpenCode client status">
-          <span className="status-dot" />
-          <div>
-            <strong>OpenCode client</strong>
-            <p>Integration seam ready. Wire this to a local OpenCode service next.</p>
+    <main className="min-h-svh bg-[#f5f5f7] text-[#1d1d1f]">
+      <div className="mx-auto flex min-h-svh w-full max-w-[1500px] flex-col px-4 py-4 sm:px-6 lg:px-8">
+        <header className="mb-4 flex flex-col gap-3 rounded-[28px] border border-black/5 bg-white/75 px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 place-items-center rounded-2xl bg-black text-sm font-semibold text-white shadow-sm">
+              OB
+            </div>
+            <div>
+              <h1 className="text-[1.05rem] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
+                OpenBoard
+              </h1>
+              <p className="text-sm text-[#6e6e73]">Kanban for AI coding work</p>
+            </div>
           </div>
-        </aside>
-      </section>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <section className="board" aria-label="Kanban board">
-          {columns.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              column={column}
-              cards={cards.filter((card) => card.status === column.id)}
-            />
-          ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-[#f5f5f7] px-3 py-1.5 text-sm text-[#6e6e73]">
+              <span className="size-2 rounded-full bg-[#34c759]" />
+              OpenCode local
+            </span>
+            <Button className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#1d1d1f] shadow-sm transition hover:bg-[#f5f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]">
+              New task
+            </Button>
+          </div>
+        </header>
+
+        <section className="mb-4 grid gap-3 sm:grid-cols-3">
+          <InfoCard label="Board" value="4 tasks" />
+          <InfoCard label="Session" value="Not connected" />
+          <InfoCard label="Mode" value="Human approved" />
         </section>
 
-        <DragOverlay>{activeCard ? <TaskCard card={activeCard} overlay /> : null}</DragOverlay>
-      </DndContext>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <section
+            className="grid flex-1 grid-cols-[repeat(4,minmax(280px,1fr))] gap-3 overflow-x-auto pb-3"
+            aria-label="Kanban board"
+          >
+            {columns.map((column) => (
+              <KanbanColumn
+                key={column.id}
+                column={column}
+                cards={cards.filter((card) => card.status === column.id)}
+              />
+            ))}
+          </section>
+
+          <DragOverlay>{activeCard ? <TaskCard card={activeCard} overlay /> : null}</DragOverlay>
+        </DndContext>
+      </div>
     </main>
   )
 }
 
-function KanbanColumn({
-  column,
-  cards,
-}: {
-  column: Column
-  cards: Card[]
-}) {
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl border border-black/5 bg-white/60 px-4 py-3 backdrop-blur-xl">
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">{label}</p>
+      <p className="mt-1 text-sm font-medium text-[#1d1d1f]">{value}</p>
+    </div>
+  )
+}
+
+function KanbanColumn({ column, cards }: { column: Column; cards: Card[] }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards])
 
   return (
-    <article className={`column ${isOver ? 'column-over' : ''}`} ref={setNodeRef}>
-      <header className="column-header">
+    <article
+      className={classNames(
+        'min-h-[560px] rounded-[28px] border p-3 transition-colors',
+        isOver ? 'border-[#007aff]/40 bg-[#eaf4ff]' : 'border-black/5 bg-white/55',
+      )}
+      ref={setNodeRef}
+    >
+      <header className="mb-3 flex items-start justify-between gap-4 px-1 py-1">
         <div>
-          <h2>{column.title}</h2>
-          <p>{column.description}</p>
+          <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-[#1d1d1f]">
+            {column.title}
+          </h2>
+          <p className="mt-0.5 text-sm text-[#86868b]">{column.description}</p>
         </div>
-        <span>{cards.length}</span>
+        <span className="grid size-7 place-items-center rounded-full bg-black/[0.04] text-xs font-medium text-[#6e6e73]">
+          {cards.length}
+        </span>
       </header>
 
       <SortableContext items={cardIds} strategy={rectSortingStrategy}>
-        <div className="card-stack">
+        <div className="grid min-h-[460px] content-start gap-2.5">
           {cards.map((card) => (
             <SortableTaskCard key={card.id} card={card} />
           ))}
@@ -253,24 +267,40 @@ function TaskCard({
 }) {
   return (
     <div
-      className={`task-card ${overlay ? 'task-card-overlay' : ''} ${hidden ? 'task-card-hidden' : ''}`}
+      className={classNames(
+        'group rounded-[22px] border border-black/5 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_30px_rgba(0,0,0,0.05)] transition',
+        overlay && 'w-[290px] shadow-[0_20px_60px_rgba(0,0,0,0.16)]',
+        hidden && 'opacity-30',
+      )}
       ref={refCallback}
       style={style}
     >
-      <button className="drag-handle" type="button" aria-label={`Move ${card.title}`} {...dragHandleProps}>
-        <span />
-        <span />
-      </button>
-      <div>
-        <div className="card-meta">
-          <span>{card.agent}</span>
-          <span>AI task</span>
-        </div>
-        <h3>{card.title}</h3>
-        <p>{card.prompt}</p>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="rounded-full bg-[#f5f5f7] px-2.5 py-1 text-xs font-medium text-[#6e6e73]">
+          {card.agent}
+        </span>
+        <Button
+          className="grid size-8 cursor-grab place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+          type="button"
+          aria-label={`Move ${card.title}`}
+          {...dragHandleProps}
+        >
+          <span className="flex flex-col gap-1">
+            <span className="block h-0.5 w-3 rounded-full bg-current" />
+            <span className="block h-0.5 w-3 rounded-full bg-current" />
+          </span>
+        </Button>
       </div>
+      <h3 className="text-[0.96rem] font-semibold leading-snug tracking-[-0.01em] text-[#1d1d1f]">
+        {card.title}
+      </h3>
+      <p className="mt-2 text-sm leading-5 text-[#6e6e73]">{card.prompt}</p>
     </div>
   )
+}
+
+function classNames(...classes: Array<string | false | undefined>) {
+  return classes.filter(Boolean).join(' ')
 }
 
 export default App
