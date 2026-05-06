@@ -38,7 +38,7 @@ The production build is written to `docs/` for GitHub Pages and should be commit
 
 This repo also contains the npm package for the accompanying OpenCode plugin in `packages/openboard-opencode-plugin`.
 
-For local repo use, `opencode.json` loads `.opencode/plugins/openboard.js`, and `.opencode/agents/` defines the default OpenBoard agents:
+For local repo use, `opencode.json` loads `.opencode/plugins/openboard.js`. Installing or loading the plugin injects the default OpenBoard agents:
 
 - `openboard-prepper`
 - `openboard-planner`
