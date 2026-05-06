@@ -467,14 +467,12 @@ function App() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(0,122,255,0.20),transparent_32%),radial-gradient(circle_at_78%_8%,rgba(90,200,250,0.18),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f5f7fb_44%,#eef3f9_100%)]" />
       <div className="pointer-events-none absolute left-1/2 top-6 h-28 w-[min(760px,80vw)] -translate-x-1/2 rounded-full bg-white/70 blur-3xl" />
       <div
-        className={classNames(
-          'relative flex min-h-svh w-full flex-col py-4',
-        )}
+        className="relative flex min-h-svh w-full flex-col py-4"
       >
         <div
           className={classNames(
-            'sticky left-0 z-20 w-screen px-4 transition-[padding] duration-300 sm:px-6 lg:px-8',
-            sidebarState !== 'closed' && '2xl:pr-[548px]',
+            'sticky left-0 right-0 z-20 w-screen px-4 transition-[width] duration-300 sm:px-6 lg:px-8',
+            sidebarState !== 'closed' && '2xl:right-[548px] 2xl:w-[calc(100vw-548px)]',
           )}
         >
           <header className="mb-4 flex flex-col gap-3 rounded-[32px] border border-white/70 bg-white/55 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_70px_rgba(0,64,128,0.12)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
@@ -513,7 +511,6 @@ function App() {
           </header>
 
           <PrepLane
-            connectionLabel={connection.health ? `OpenCode v${connection.health.version}` : connectionLabel}
             prepSessions={prepSessions}
             activePrepSessionId={activePrepSessionId}
             onCreate={() => setSidebarState('new')}
@@ -693,13 +690,11 @@ function ConnectionModal({
 }
 
 function PrepLane({
-  connectionLabel,
   prepSessions,
   activePrepSessionId,
   onCreate,
   onOpen,
 }: {
-  connectionLabel: string
   prepSessions: OpenBoardPrepSession[]
   activePrepSessionId: string | null
   onCreate: () => void
@@ -724,18 +719,6 @@ function PrepLane({
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-1" aria-label="Prep sessions">
-        <div className="min-w-[220px] rounded-[24px] border border-white/70 bg-white/62 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_24px_rgba(0,64,128,0.08)] backdrop-blur-xl">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Board</p>
-          <p className="mt-1 text-sm font-medium text-[#1d1d1f]">4 tasks</p>
-        </div>
-        <div className="min-w-[220px] rounded-[24px] border border-white/70 bg-white/62 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_24px_rgba(0,64,128,0.08)] backdrop-blur-xl">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">OpenCode</p>
-          <p className="mt-1 text-sm font-medium text-[#1d1d1f]">{connectionLabel}</p>
-        </div>
-        <div className="min-w-[220px] rounded-[24px] border border-white/70 bg-white/62 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_24px_rgba(0,64,128,0.08)] backdrop-blur-xl">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Mode</p>
-          <p className="mt-1 text-sm font-medium text-[#1d1d1f]">Human approved</p>
-        </div>
         {prepSessions.map((session) => (
           <button
             key={session.id}
