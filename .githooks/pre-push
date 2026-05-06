@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+npm run build
+
+if ! git diff --quiet -- dist; then
+  printf '%s\n' 'dist changed after npm run build. Commit the updated build artifacts before pushing.' >&2
+  exit 1
+fi
+
+if [ -n "$(git ls-files --others --exclude-standard dist)" ]; then
+  printf '%s\n' 'dist contains untracked build artifacts. Add and commit them before pushing.' >&2
+  exit 1
+fi
