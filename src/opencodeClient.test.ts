@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createOpenCodeId,
   createOpenCodeTextPart,
+  deleteOpenCodeSession,
+  listOpenCodeProjects,
   sendOpenCodePrompt,
   type OpenCodeServerConfig,
 } from './opencodeClient'
@@ -103,6 +105,44 @@ describe('OpenCode chat client', () => {
       messageID: 'msg_given',
       parts: [{ id: 'prt_given', type: 'text', text: 'prep this work' }],
     })
+  })
+
+  it('loads projects from OpenCode', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([{ id: 'proj_1', worktree: '/Users/example/project', sandboxes: [] }]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(listOpenCodeProjects(config)).resolves.toEqual([
+      { id: 'proj_1', worktree: '/Users/example/project', sandboxes: [] },
+    ])
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
+    expect(url.toString()).toBe('http://127.0.0.1:4096/project')
+    expect(new Headers(init.headers).get('Authorization')).toBe('Basic dXNlcjpwYXNz')
+  })
+
+  it('deletes the scoped OpenCode session', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(true), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      deleteOpenCodeSession(config, { sessionID: 'ses_1', directory: '/Users/example/project' }),
+    ).resolves.toBe(true)
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
+    expect(url.toString()).toBe(
+      'http://127.0.0.1:4096/session/ses_1?directory=%2FUsers%2Fexample%2Fproject',
+    )
+    expect(init.method).toBe('DELETE')
   })
 })
 

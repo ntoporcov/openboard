@@ -32,6 +32,19 @@ export type OpenCodeSession = {
   }
 }
 
+export type OpenCodeProject = {
+  id: string
+  worktree: string
+  vcs?: 'git'
+  name?: string
+  sandboxes?: string[]
+  time?: {
+    created: number
+    updated: number
+    initialized?: number
+  }
+}
+
 export type OpenCodeMessage = {
   info: {
     id: string
@@ -276,6 +289,32 @@ export async function createOpenCodeSession(
   }
 
   return (await response.json()) as OpenCodeSession
+}
+
+export async function deleteOpenCodeSession(
+  config: OpenCodeServerConfig,
+  input: { sessionID: string; directory: string },
+) {
+  const url = requestUrl(config, `/session/${input.sessionID}`, { directory: input.directory })
+  const response = await fetch(url, requestInit(config, { method: 'DELETE' }))
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode session delete failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as boolean
+}
+
+export async function listOpenCodeProjects(config: OpenCodeServerConfig) {
+  const response = await fetch(requestUrl(config, '/project'), requestInit(config))
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode projects request failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as OpenCodeProject[]
 }
 
 export async function listOpenCodeMessages(

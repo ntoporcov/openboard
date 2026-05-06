@@ -72,6 +72,10 @@ export async function savePrepSession(session: OpenBoardPrepSession) {
   return session
 }
 
+export async function deletePrepSession(id: string) {
+  await transaction<undefined>('readwrite', (store) => store.delete(id))
+}
+
 export function createPrepSessionId() {
   return `prep_${Date.now().toString(36)}_${crypto.randomUUID()}`
 }

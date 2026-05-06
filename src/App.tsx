@@ -33,8 +33,10 @@ import {
   createOpenCodeId,
   createOpenCodeSession,
   createOpenCodeTextPart,
+  deleteOpenCodeSession,
   defaultOpenCodeServerConfig,
   listOpenCodeMessages,
+  listOpenCodeProjects,
   loadOpenCodeServerConfig,
   saveOpenCodeServerConfig,
   sendOpenCodePrompt,
@@ -43,10 +45,12 @@ import {
   type OpenCodeHealthResponse,
   type OpenCodeMessage,
   type OpenCodeMessagePart,
+  type OpenCodeProject,
   type OpenCodeServerConfig,
 } from './opencodeClient'
 import {
   createPrepSessionId,
+  deletePrepSession,
   listPrepSessions,
   savePrepSession,
   type OpenBoardPrepSession,
@@ -131,6 +135,8 @@ function App() {
   const [messages, setMessages] = useState<OpenCodeMessage[]>([])
   const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([])
   const [sessionError, setSessionError] = useState<string | null>(null)
+  const [projects, setProjects] = useState<OpenCodeProject[]>([])
+  const [projectError, setProjectError] = useState<string | null>(null)
   const [connection, setConnection] = useState<ConnectionState>(() => {
     const config = loadOpenCodeServerConfig()
 
@@ -207,6 +213,31 @@ function App() {
       cancelled = true
     }
   }, [connection.config])
+
+  useEffect(() => {
+    if (connection.status !== 'connected' || !connection.config) {
+      return
+    }
+
+    let cancelled = false
+
+    listOpenCodeProjects(connection.config)
+      .then((nextProjects) => {
+        if (!cancelled) {
+          setProjects(nextProjects)
+          setProjectError(null)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setProjectError(error instanceof Error ? error.message : 'Unable to load OpenCode projects.')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [connection.config, connection.status])
 
   useEffect(() => {
     if (!connection.config || !activePrepSession) {
@@ -369,6 +400,27 @@ function App() {
     setSidebarState('open')
   }
 
+  async function handlePrepSessionDelete(session: OpenBoardPrepSession) {
+    if (!connection.config) {
+      throw new Error('Connect to OpenCode before deleting this prep session.')
+    }
+
+    await deleteOpenCodeSession(connection.config, {
+      sessionID: session.opencodeSessionId,
+      directory: session.projectDirectory,
+    })
+    await deletePrepSession(session.id)
+
+    setPrepSessions((currentSessions) => currentSessions.filter((item) => item.id !== session.id))
+    setMessages([])
+    setSessionEvents([])
+
+    if (activePrepSessionId === session.id) {
+      setActivePrepSessionId(null)
+      setSidebarState('closed')
+    }
+  }
+
   async function handlePromptSubmit(text: string) {
     if (!connection.config || !activePrepSession) {
       return
@@ -498,8 +550,11 @@ function App() {
           events={sessionEvents}
           error={sessionError}
           connected={connection.status === 'connected'}
+          projects={projects}
+          projectError={projectError}
           onClose={() => setSidebarState('closed')}
           onCreate={handlePrepSessionCreated}
+          onDelete={handlePrepSessionDelete}
           onPromptSubmit={handlePromptSubmit}
         />
       ) : null}
@@ -702,8 +757,11 @@ function PrepSidebar({
   events,
   error,
   connected,
+  projects,
+  projectError,
   onClose,
   onCreate,
+  onDelete,
   onPromptSubmit,
 }: {
   mode: SidebarState
@@ -712,12 +770,16 @@ function PrepSidebar({
   events: SessionEvent[]
   error: string | null
   connected: boolean
+  projects: OpenCodeProject[]
+  projectError: string | null
   onClose: () => void
   onCreate: (input: { title: string; projectDirectory: string }) => Promise<void>
+  onDelete: (session: OpenBoardPrepSession) => Promise<void>
   onPromptSubmit: (text: string) => Promise<void>
 }) {
   const [draft, setDraft] = useState('')
   const [status, setStatus] = useState<'idle' | 'working'>('idle')
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'deleting'>('idle')
   const [localError, setLocalError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const latestEvent = events[0]
@@ -755,6 +817,28 @@ function PrepSidebar({
     event.currentTarget.form?.requestSubmit()
   }
 
+  async function handleDelete() {
+    if (!session) {
+      return
+    }
+
+    const confirmed = window.confirm(`Delete “${session.title}” from OpenBoard and OpenCode?`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setDeleteStatus('deleting')
+    setLocalError(null)
+
+    try {
+      await onDelete(session)
+    } catch (deleteError) {
+      setLocalError(deleteError instanceof Error ? deleteError.message : 'Unable to delete prep session.')
+      setDeleteStatus('idle')
+    }
+  }
+
   return (
     <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[520px] flex-col border-l border-white/65 bg-white/58 shadow-[inset_1px_0_0_rgba(255,255,255,0.75),0_30px_90px_rgba(0,28,64,0.20)] backdrop-blur-2xl">
       <header className="border-b border-white/60 bg-white/55 px-5 py-4 backdrop-blur-2xl">
@@ -781,7 +865,12 @@ function PrepSidebar({
       </header>
 
       {mode === 'new' ? (
-        <CreatePrepSessionForm connected={connected} onCreate={onCreate} />
+        <CreatePrepSessionForm
+          connected={connected}
+          projects={projects}
+          projectError={projectError}
+          onCreate={onCreate}
+        />
       ) : (
         <>
           <div className="grid gap-3 border-b border-white/60 bg-white/45 px-5 py-3 backdrop-blur-xl">
@@ -792,6 +881,16 @@ function PrepSidebar({
             <div className="grid grid-cols-2 gap-2">
               <ChatMeta label="OpenCode ID" value={session?.opencodeSessionId ?? 'No session'} />
               <ChatMeta label="Stream" value={latestEvent ? `${latestEvent.type} ${formatRelativeTime(latestEvent.at)}` : 'Listening'} />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                className="rounded-full border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-1.5 text-xs font-semibold text-[#b42318] transition hover:bg-[#ff3b30]/10 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff3b30]"
+                type="button"
+                disabled={deleteStatus === 'deleting'}
+                onClick={handleDelete}
+              >
+                {deleteStatus === 'deleting' ? 'Deleting...' : 'Delete prep session'}
+              </Button>
             </div>
           </div>
 
@@ -844,15 +943,22 @@ function PrepSidebar({
 
 function CreatePrepSessionForm({
   connected,
+  projects,
+  projectError,
   onCreate,
 }: {
   connected: boolean
+  projects: OpenCodeProject[]
+  projectError: string | null
   onCreate: (input: { title: string; projectDirectory: string }) => Promise<void>
 }) {
   const [title, setTitle] = useState('')
   const [projectDirectory, setProjectDirectory] = useState('')
+  const [manualEntry, setManualEntry] = useState(false)
   const [status, setStatus] = useState<'idle' | 'creating'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const sortedProjects = [...projects].sort((a, b) => projectLabel(a).localeCompare(projectLabel(b)))
+  const canPickProjects = sortedProjects.length > 0 && !manualEntry
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -886,14 +992,45 @@ function CreatePrepSessionForm({
       </label>
       <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
         Project directory
-        <input
-          className="rounded-2xl border border-white/70 bg-white/64 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
-          value={projectDirectory}
-          placeholder="/Users/mininic/openboard"
-          required
-          onChange={(event) => setProjectDirectory(event.target.value)}
-        />
+        {canPickProjects ? (
+          <select
+            className="rounded-2xl border border-white/70 bg-white/64 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+            value={projectDirectory}
+            required
+            onChange={(event) => setProjectDirectory(event.target.value)}
+          >
+            <option value="">Choose an OpenCode project...</option>
+            {sortedProjects.map((project) => (
+              <option key={project.id} value={project.worktree}>
+                {projectLabel(project)} - {project.worktree}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="rounded-2xl border border-white/70 bg-white/64 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+            value={projectDirectory}
+            placeholder="/Users/mininic/openboard"
+            required
+            onChange={(event) => setProjectDirectory(event.target.value)}
+          />
+        )}
       </label>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-[#86868b]">
+          {projectError ?? (sortedProjects.length > 0 ? `${sortedProjects.length} OpenCode projects loaded.` : 'No OpenCode projects found yet.')}
+        </p>
+        <Button
+          className="rounded-full border border-white/70 bg-white/65 px-3 py-1.5 text-xs font-semibold text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-xl transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+          type="button"
+          onClick={() => {
+            setProjectDirectory('')
+            setManualEntry((value) => !value)
+          }}
+        >
+          {canPickProjects ? 'Enter path manually' : 'Pick from projects'}
+        </Button>
+      </div>
       {error ? (
         <p className="rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
           {error}
@@ -1220,6 +1357,15 @@ function formatRelativeTime(timestamp: number) {
 
   const days = Math.round(hours / 24)
   return `${days}d ago`
+}
+
+function projectLabel(project: OpenCodeProject) {
+  if (project.name?.trim()) {
+    return project.name.trim()
+  }
+
+  const parts = project.worktree.split('/').filter(Boolean)
+  return parts.at(-1) ?? project.worktree
 }
 
 export default App
