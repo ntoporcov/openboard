@@ -466,7 +466,12 @@ function App() {
     <main className="relative min-h-svh overflow-hidden bg-[#f5f5f7] text-[#1d1d1f]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(0,122,255,0.20),transparent_32%),radial-gradient(circle_at_78%_8%,rgba(90,200,250,0.18),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f5f7fb_44%,#eef3f9_100%)]" />
       <div className="pointer-events-none absolute left-1/2 top-6 h-28 w-[min(760px,80vw)] -translate-x-1/2 rounded-full bg-white/70 blur-3xl" />
-      <div className="relative mx-auto flex min-h-svh w-full max-w-[1500px] flex-col px-4 py-4 sm:px-6 lg:px-8">
+      <div
+        className={classNames(
+          'relative mx-auto flex min-h-svh w-full max-w-[1500px] flex-col px-4 py-4 transition-[padding] duration-300 sm:px-6 lg:px-8',
+          sidebarState !== 'closed' && '2xl:pr-[548px]',
+        )}
+      >
         <header className="mb-4 flex flex-col gap-3 rounded-[32px] border border-white/70 bg-white/55 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_70px_rgba(0,64,128,0.12)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="grid size-10 place-items-center rounded-[18px] bg-[linear-gradient(145deg,#0a84ff,#0066d6)] text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_28px_rgba(0,122,255,0.32)]">
@@ -841,7 +846,7 @@ function PrepSidebar({
   }
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[520px] flex-col border-l border-white/65 bg-[#f5f5f7]/86 shadow-[inset_1px_0_0_rgba(255,255,255,0.75),0_30px_90px_rgba(0,28,64,0.20)] backdrop-blur-2xl">
+    <aside className="fixed inset-x-3 bottom-3 top-3 z-40 flex w-auto flex-col overflow-hidden rounded-[34px] border border-white/70 bg-[#f5f5f7]/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_30px_90px_rgba(0,28,64,0.24)] backdrop-blur-2xl sm:inset-x-auto sm:right-4 sm:w-[min(500px,calc(100vw-2rem))] 2xl:right-6">
       <header className="border-b border-white/60 bg-white/72 px-5 py-4 backdrop-blur-2xl">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -856,7 +861,7 @@ function PrepSidebar({
                 <summary className="grid size-8 cursor-pointer list-none place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff] [&::-webkit-details-marker]:hidden" aria-label="Prep session options">
                   <span className="text-xl leading-none">…</span>
                 </summary>
-                <div className="absolute right-0 top-10 z-10 w-80 rounded-[24px] border border-white/70 bg-white/90 p-3 shadow-[0_18px_50px_rgba(0,28,64,0.18)] backdrop-blur-2xl">
+                <div className="absolute right-0 top-10 z-10 w-[min(20rem,calc(100vw-3rem))] overflow-hidden rounded-[24px] border border-white/70 bg-white/90 p-3 shadow-[0_18px_50px_rgba(0,28,64,0.18)] backdrop-blur-2xl">
                   <div className="grid gap-2 text-sm">
                     <OptionDetail label="Project" value={session?.projectDirectory ?? 'No project'} />
                     <OptionDetail label="OpenCode ID" value={session?.opencodeSessionId ?? 'No session'} />
@@ -981,19 +986,30 @@ function CreatePrepSessionForm({
       <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
         Project directory
         {canPickProjects ? (
-          <select
-            className="rounded-2xl border border-white/70 bg-white/64 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
-            value={projectDirectory}
-            required
-            onChange={(event) => setProjectDirectory(event.target.value)}
-          >
-            <option value="">Choose an OpenCode project...</option>
-            {sortedProjects.map((project) => (
-              <option key={project.id} value={project.worktree}>
-                {projectLabel(project)} - {project.worktree}
-              </option>
-            ))}
-          </select>
+          <div className="grid max-h-[300px] gap-2 overflow-y-auto rounded-[24px] border border-white/70 bg-white/45 p-2 shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+            {sortedProjects.map((project) => {
+              const selected = projectDirectory === project.worktree
+
+              return (
+                <button
+                  key={project.id}
+                  className={classNames(
+                    'rounded-[18px] border px-3 py-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]',
+                    selected
+                      ? 'border-[#007aff]/40 bg-[#eaf4ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
+                      : 'border-white/60 bg-white/58 hover:bg-white/82',
+                  )}
+                  type="button"
+                  onClick={() => setProjectDirectory(project.worktree)}
+                >
+                  <span className="block truncate text-sm font-semibold text-[#1d1d1f]">{projectLabel(project)}</span>
+                  <span className="mt-1 block break-all text-xs font-normal leading-4 text-[#6e6e73]">
+                    {project.worktree}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         ) : (
           <input
             className="rounded-2xl border border-white/70 bg-white/64 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
@@ -1039,7 +1055,7 @@ function OptionDetail({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-black/[0.035] px-3 py-2">
       <p className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-[#86868b]">{label}</p>
-      <p className="mt-1 truncate text-xs font-medium text-[#1d1d1f]">{value}</p>
+      <p className="mt-1 break-all text-xs font-medium leading-4 text-[#1d1d1f]">{value}</p>
     </div>
   )
 }
