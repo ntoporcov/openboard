@@ -19,15 +19,34 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type HTMLAttributes } from 'react'
 import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type HTMLAttributes,
+} from 'react'
+import {
+  createOpenCodeSession,
   defaultOpenCodeServerConfig,
+  listOpenCodeMessages,
   loadOpenCodeServerConfig,
   saveOpenCodeServerConfig,
+  sendOpenCodePrompt,
+  subscribeOpenCodeEvents,
   validateOpenCodeConnection,
   type OpenCodeHealthResponse,
+  type OpenCodeMessage,
+  type OpenCodeMessagePart,
   type OpenCodeServerConfig,
 } from './opencodeClient'
+import {
+  createPrepSessionId,
+  listPrepSessions,
+  savePrepSession,
+  type OpenBoardPrepSession,
+} from './openboardDb'
 
 type ColumnId = 'inbox' | 'planned' | 'active' | 'done'
 
@@ -90,10 +109,24 @@ type ConnectionState = {
   error: string | null
 }
 
+type SessionEvent = {
+  id: string
+  type: string
+  at: number
+}
+
+type SidebarState = 'closed' | 'new' | 'open'
+
 function App() {
   const [cards, setCards] = useState(initialCards)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [connectionModalOpen, setConnectionModalOpen] = useState(() => !loadOpenCodeServerConfig())
+  const [prepSessions, setPrepSessions] = useState<OpenBoardPrepSession[]>([])
+  const [sidebarState, setSidebarState] = useState<SidebarState>('closed')
+  const [activePrepSessionId, setActivePrepSessionId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<OpenCodeMessage[]>([])
+  const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([])
+  const [sessionError, setSessionError] = useState<string | null>(null)
   const [connection, setConnection] = useState<ConnectionState>(() => {
     const config = loadOpenCodeServerConfig()
 
@@ -110,6 +143,27 @@ function App() {
   )
 
   const activeCard = cards.find((card) => card.id === activeId) ?? null
+  const activePrepSession = prepSessions.find((session) => session.id === activePrepSessionId) ?? null
+
+  useEffect(() => {
+    let cancelled = false
+
+    listPrepSessions()
+      .then((sessions) => {
+        if (!cancelled) {
+          setPrepSessions(sessions)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setSessionError(error instanceof Error ? error.message : 'Unable to load prep sessions.')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!connection.config) {
@@ -149,6 +203,76 @@ function App() {
       cancelled = true
     }
   }, [connection.config])
+
+  useEffect(() => {
+    if (!connection.config || !activePrepSession) {
+      return
+    }
+
+    let cancelled = false
+
+    listOpenCodeMessages(connection.config, {
+      sessionID: activePrepSession.opencodeSessionId,
+      directory: activePrepSession.projectDirectory,
+    })
+      .then((nextMessages) => {
+        if (!cancelled) {
+          setMessages(nextMessages)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setSessionError(error instanceof Error ? error.message : 'Unable to load OpenCode messages.')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activePrepSession, connection.config])
+
+  useEffect(() => {
+    const config = connection.config
+
+    if (!config) {
+      return
+    }
+
+    return subscribeOpenCodeEvents(config, {
+      onEvent: (event) => {
+        const payload = event.payload
+        const sessionID = payload.properties?.sessionID
+        const prepSession = prepSessions.find((session) => session.opencodeSessionId === sessionID)
+
+        if (!prepSession) {
+          return
+        }
+
+        setSessionEvents((currentEvents) =>
+          [
+            { id: `${Date.now()}-${payload.type}`, type: payload.type, at: Date.now() },
+            ...currentEvents,
+          ].slice(0, 8),
+        )
+
+        if (prepSession.id !== activePrepSessionId) {
+          return
+        }
+
+        if (payload.type === 'message.updated' || payload.type === 'message.part.updated') {
+          void listOpenCodeMessages(config, {
+            sessionID: prepSession.opencodeSessionId,
+            directory: prepSession.projectDirectory,
+          })
+            .then(setMessages)
+            .catch((error: unknown) => {
+              setSessionError(error instanceof Error ? error.message : 'Unable to refresh OpenCode messages.')
+            })
+        }
+      },
+      onError: (error) => setSessionError(error.message),
+    })
+  }, [activePrepSessionId, connection.config, prepSessions])
 
   function getColumnFromTarget(targetId: string): ColumnId | undefined {
     if (columns.some((column) => column.id === targetId)) {
@@ -209,6 +333,56 @@ function App() {
     setConnectionModalOpen(false)
   }
 
+  function handleOpenPrepSession(session: OpenBoardPrepSession) {
+    setActivePrepSessionId(session.id)
+    setSidebarState('open')
+    setSessionError(null)
+  }
+
+  async function handlePrepSessionCreated(input: { title: string; projectDirectory: string }) {
+    if (!connection.config) {
+      setConnectionModalOpen(true)
+      throw new Error('Connect to OpenCode before creating a prep session.')
+    }
+
+    const opencodeSession = await createOpenCodeSession(connection.config, {
+      title: input.title,
+      directory: input.projectDirectory,
+    })
+    const now = Date.now()
+    const prepSession = await savePrepSession({
+      id: createPrepSessionId(),
+      title: opencodeSession.title || input.title || 'Untitled prep session',
+      projectDirectory: opencodeSession.directory || input.projectDirectory,
+      opencodeSessionId: opencodeSession.id,
+      createdAt: now,
+      updatedAt: now,
+      status: 'prepping',
+    })
+
+    setPrepSessions((currentSessions) => [prepSession, ...currentSessions])
+    setActivePrepSessionId(prepSession.id)
+    setSidebarState('open')
+  }
+
+  async function handlePromptSubmit(text: string) {
+    if (!connection.config || !activePrepSession) {
+      return
+    }
+
+    await sendOpenCodePrompt(connection.config, {
+      sessionID: activePrepSession.opencodeSessionId,
+      directory: activePrepSession.projectDirectory,
+      text,
+    })
+
+    const nextMessages = await listOpenCodeMessages(connection.config, {
+      sessionID: activePrepSession.opencodeSessionId,
+      directory: activePrepSession.projectDirectory,
+    })
+    setMessages(nextMessages)
+  }
+
   const connectionLabel = getConnectionLabel(connection)
 
   return (
@@ -239,17 +413,23 @@ function App() {
             >
               Connect
             </Button>
-            <Button className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#1d1d1f] shadow-sm transition hover:bg-[#f5f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]">
-              New task
+            <Button
+              className="rounded-full bg-[#1d1d1f] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              type="button"
+              onClick={() => setSidebarState('new')}
+            >
+              Create prep
             </Button>
           </div>
         </header>
 
-        <section className="mb-4 grid gap-3 sm:grid-cols-3">
-          <InfoCard label="Board" value="4 tasks" />
-          <InfoCard label="OpenCode" value={connection.health ? `v${connection.health.version}` : connectionLabel} />
-          <InfoCard label="Mode" value="Human approved" />
-        </section>
+        <PrepLane
+          connectionLabel={connection.health ? `OpenCode v${connection.health.version}` : connectionLabel}
+          prepSessions={prepSessions}
+          activePrepSessionId={activePrepSessionId}
+          onCreate={() => setSidebarState('new')}
+          onOpen={handleOpenPrepSession}
+        />
 
         <DndContext
           sensors={sensors}
@@ -280,6 +460,20 @@ function App() {
           initialError={connection.error}
           onClose={() => setConnectionModalOpen(false)}
           onValidated={handleConnectionValidated}
+        />
+      ) : null}
+
+      {sidebarState !== 'closed' ? (
+        <PrepSidebar
+          mode={sidebarState}
+          session={activePrepSession}
+          messages={messages}
+          events={sessionEvents}
+          error={sessionError}
+          connected={connection.status === 'connected'}
+          onClose={() => setSidebarState('closed')}
+          onCreate={handlePrepSessionCreated}
+          onPromptSubmit={handlePromptSubmit}
         />
       ) : null}
     </main>
@@ -405,13 +599,314 @@ function ConnectionModal({
   )
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function PrepLane({
+  connectionLabel,
+  prepSessions,
+  activePrepSessionId,
+  onCreate,
+  onOpen,
+}: {
+  connectionLabel: string
+  prepSessions: OpenBoardPrepSession[]
+  activePrepSessionId: string | null
+  onCreate: () => void
+  onOpen: (session: OpenBoardPrepSession) => void
+}) {
   return (
-    <div className="rounded-3xl border border-black/5 bg-white/60 px-4 py-3 backdrop-blur-xl">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">{label}</p>
-      <p className="mt-1 text-sm font-medium text-[#1d1d1f]">{value}</p>
+    <section className="mb-4 rounded-[28px] border border-black/5 bg-white/55 p-3 backdrop-blur-xl">
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-[#1d1d1f]">Prep area</h2>
+          <p className="mt-0.5 text-sm text-[#86868b]">
+            Board-wide planning sessions. Each prep session is pinned to its own OpenCode project.
+          </p>
+        </div>
+        <Button
+          className="shrink-0 rounded-full bg-[#1d1d1f] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+          type="button"
+          onClick={onCreate}
+        >
+          Create
+        </Button>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-1" aria-label="Prep sessions">
+        <div className="min-w-[220px] rounded-[22px] border border-black/5 bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Board</p>
+          <p className="mt-1 text-sm font-medium text-[#1d1d1f]">4 tasks</p>
+        </div>
+        <div className="min-w-[220px] rounded-[22px] border border-black/5 bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">OpenCode</p>
+          <p className="mt-1 text-sm font-medium text-[#1d1d1f]">{connectionLabel}</p>
+        </div>
+        <div className="min-w-[220px] rounded-[22px] border border-black/5 bg-white px-4 py-3 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Mode</p>
+          <p className="mt-1 text-sm font-medium text-[#1d1d1f]">Human approved</p>
+        </div>
+        {prepSessions.map((session) => (
+          <button
+            key={session.id}
+            className={classNames(
+              'min-w-[280px] rounded-[22px] border bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[#fbfbfd] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]',
+              activePrepSessionId === session.id ? 'border-[#007aff]/35' : 'border-black/5',
+            )}
+            type="button"
+            onClick={() => onOpen(session)}
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="rounded-full bg-[#f5f5f7] px-2.5 py-1 text-xs font-medium text-[#6e6e73]">
+                {session.status}
+              </span>
+              <span className="text-xs text-[#86868b]">{formatRelativeTime(session.updatedAt)}</span>
+            </div>
+            <p className="truncate text-sm font-semibold text-[#1d1d1f]">{session.title}</p>
+            <p className="mt-1 truncate text-xs text-[#6e6e73]">{session.projectDirectory}</p>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function PrepSidebar({
+  mode,
+  session,
+  messages,
+  events,
+  error,
+  connected,
+  onClose,
+  onCreate,
+  onPromptSubmit,
+}: {
+  mode: SidebarState
+  session: OpenBoardPrepSession | null
+  messages: OpenCodeMessage[]
+  events: SessionEvent[]
+  error: string | null
+  connected: boolean
+  onClose: () => void
+  onCreate: (input: { title: string; projectDirectory: string }) => Promise<void>
+  onPromptSubmit: (text: string) => Promise<void>
+}) {
+  const [draft, setDraft] = useState('')
+  const [status, setStatus] = useState<'idle' | 'working'>('idle')
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!draft.trim()) {
+      return
+    }
+
+    setStatus('working')
+    setLocalError(null)
+
+    try {
+      await onPromptSubmit(draft.trim())
+      setDraft('')
+    } catch (submitError) {
+      setLocalError(submitError instanceof Error ? submitError.message : 'Unable to send message.')
+    } finally {
+      setStatus('idle')
+    }
+  }
+
+  return (
+    <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-[520px] flex-col border-l border-black/10 bg-[#fbfbfd] shadow-[0_30px_90px_rgba(0,0,0,0.18)]">
+      <header className="border-b border-black/5 bg-white/80 px-5 py-4 backdrop-blur-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Prep chat</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-[#1d1d1f]">
+              {mode === 'new' ? 'Create OpenCode session' : session?.title}
+            </h2>
+          </div>
+          <Button
+            className="grid size-8 place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+            type="button"
+            aria-label="Close prep chat"
+            onClick={onClose}
+          >
+            ×
+          </Button>
+        </div>
+        <p className="mt-3 rounded-2xl border border-[#007aff]/15 bg-[#eaf4ff] px-3 py-2 text-sm leading-5 text-[#1d1d1f]">
+          Prep this session here first: clarify scope, identify the project directory, gather constraints, and
+          only then delegate concrete work to the agent cards below.
+        </p>
+      </header>
+
+      {mode === 'new' ? (
+        <CreatePrepSessionForm connected={connected} onCreate={onCreate} />
+      ) : (
+        <>
+          <div className="border-b border-black/5 bg-white/60 px-5 py-3">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Project</p>
+            <p className="mt-1 truncate text-sm font-medium text-[#1d1d1f]">{session?.projectDirectory}</p>
+            <p className="mt-2 text-xs text-[#86868b]">OpenCode session: {session?.opencodeSessionId}</p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <MessageList messages={messages} />
+            {events.length > 0 ? (
+              <div className="mt-4 rounded-3xl border border-black/5 bg-white p-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Live events</p>
+                <div className="grid gap-1.5">
+                  {events.map((event) => (
+                    <p key={event.id} className="text-xs text-[#6e6e73]">
+                      {event.type} · {formatRelativeTime(event.at)}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <form className="border-t border-black/5 bg-white/85 p-4 backdrop-blur-xl" onSubmit={handleSubmit}>
+            {(error || localError) && (
+              <p className="mb-3 rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
+                {localError ?? error}
+              </p>
+            )}
+            <textarea
+              className="min-h-28 w-full resize-none rounded-3xl border border-black/10 bg-[#f5f5f7] px-4 py-3 text-sm leading-5 text-[#1d1d1f] outline-none transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+              value={draft}
+              placeholder="Prep the session: goals, repo context, files to inspect, constraints, and acceptance criteria..."
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            <div className="mt-3 flex justify-end">
+              <Button
+                className="rounded-full bg-[#1d1d1f] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+                type="submit"
+                disabled={status === 'working' || !draft.trim()}
+              >
+                {status === 'working' ? 'Sending...' : 'Send to OpenCode'}
+              </Button>
+            </div>
+          </form>
+        </>
+      )}
+    </aside>
+  )
+}
+
+function CreatePrepSessionForm({
+  connected,
+  onCreate,
+}: {
+  connected: boolean
+  onCreate: (input: { title: string; projectDirectory: string }) => Promise<void>
+}) {
+  const [title, setTitle] = useState('')
+  const [projectDirectory, setProjectDirectory] = useState('')
+  const [status, setStatus] = useState<'idle' | 'creating'>('idle')
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setStatus('creating')
+    setError(null)
+
+    try {
+      await onCreate({ title, projectDirectory })
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'Unable to create prep session.')
+    } finally {
+      setStatus('idle')
+    }
+  }
+
+  return (
+    <form className="grid gap-4 p-5" onSubmit={handleSubmit}>
+      {!connected ? (
+        <p className="rounded-2xl border border-[#ffcc00]/20 bg-[#ffcc00]/10 px-3 py-2 text-sm leading-5 text-[#6e5b00]">
+          Connect to OpenCode before creating a prep session.
+        </p>
+      ) : null}
+      <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+        Session title
+        <input
+          className="rounded-2xl border border-black/10 bg-white px-3 py-2.5 text-sm font-normal text-[#1d1d1f] outline-none transition focus:border-[#007aff]/50 focus:ring-4 focus:ring-[#007aff]/10"
+          value={title}
+          placeholder="Plan settings refactor"
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </label>
+      <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+        Project directory
+        <input
+          className="rounded-2xl border border-black/10 bg-white px-3 py-2.5 text-sm font-normal text-[#1d1d1f] outline-none transition focus:border-[#007aff]/50 focus:ring-4 focus:ring-[#007aff]/10"
+          value={projectDirectory}
+          placeholder="/Users/mininic/openboard"
+          required
+          onChange={(event) => setProjectDirectory(event.target.value)}
+        />
+      </label>
+      {error ? (
+        <p className="rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
+          {error}
+        </p>
+      ) : null}
+      <Button
+        className="justify-self-end rounded-full bg-[#1d1d1f] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+        type="submit"
+        disabled={!connected || status === 'creating' || !projectDirectory.trim()}
+      >
+        {status === 'creating' ? 'Creating...' : 'Create session'}
+      </Button>
+    </form>
+  )
+}
+
+function MessageList({ messages }: { messages: OpenCodeMessage[] }) {
+  if (messages.length === 0) {
+    return (
+      <div className="rounded-3xl border border-dashed border-black/10 bg-white/70 px-4 py-6 text-center">
+        <p className="text-sm font-medium text-[#1d1d1f]">No prep messages yet</p>
+        <p className="mt-1 text-sm leading-5 text-[#6e6e73]">
+          Start by asking OpenCode to help shape the work before assigning cards to agents.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-3">
+      {messages.map((message) => (
+        <div
+          key={message.info.id}
+          className={classNames(
+            'rounded-3xl border px-4 py-3 shadow-sm',
+            message.info.role === 'user' ? 'border-[#007aff]/10 bg-[#eaf4ff]' : 'border-black/5 bg-white',
+          )}
+        >
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">{message.info.role}</p>
+            {message.info.time?.created ? (
+              <p className="text-xs text-[#86868b]">{formatRelativeTime(message.info.time.created)}</p>
+            ) : null}
+          </div>
+          <div className="grid gap-2 text-sm leading-5 text-[#1d1d1f]">
+            {message.parts.length > 0 ? (
+              message.parts.map((part) => <MessagePart key={part.id} part={part} />)
+            ) : (
+              <p className="text-[#86868b]">Message metadata received.</p>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
+}
+
+function MessagePart({ part }: { part: OpenCodeMessagePart }) {
+  if (part.type === 'text' && part.text) {
+    return <p className="whitespace-pre-wrap">{part.text}</p>
+  }
+
+  return <p className="text-[#6e6e73]">{part.type}</p>
 }
 
 function KanbanColumn({ column, cards }: { column: Column; cards: Card[] }) {
@@ -547,6 +1042,29 @@ function getConnectionDotColor(status: ConnectionState['status']) {
   }
 
   return 'bg-[#86868b]'
+}
+
+function formatRelativeTime(timestamp: number) {
+  const seconds = Math.max(1, Math.round((Date.now() - timestamp) / 1000))
+
+  if (seconds < 60) {
+    return 'just now'
+  }
+
+  const minutes = Math.round(seconds / 60)
+
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  }
+
+  const hours = Math.round(minutes / 60)
+
+  if (hours < 24) {
+    return `${hours}h ago`
+  }
+
+  const days = Math.round(hours / 24)
+  return `${days}d ago`
 }
 
 export default App
