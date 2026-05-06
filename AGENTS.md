@@ -27,4 +27,4 @@
 - The pre-push hook runs `npm run build` and rejects the push if `docs/` changes or has untracked files. If a push is blocked, commit the regenerated `docs/` artifacts and push again.
 
 ## Current Gaps
-- README is still the default Vite template; trust `package.json`, `vite.config.ts`, and this file over README prose for repo workflow.
+- README contains user-facing setup notes; trust `package.json`, `vite.config.ts`, and this file for detailed repo workflow.
