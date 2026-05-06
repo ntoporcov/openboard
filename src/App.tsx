@@ -463,12 +463,12 @@ function App() {
   const connectionLabel = getConnectionLabel(connection)
 
   return (
-    <main className="relative min-h-svh overflow-hidden bg-[#f5f5f7] text-[#1d1d1f]">
+    <main className="relative min-h-svh min-w-max bg-[#f5f5f7] text-[#1d1d1f]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(0,122,255,0.20),transparent_32%),radial-gradient(circle_at_78%_8%,rgba(90,200,250,0.18),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f5f7fb_44%,#eef3f9_100%)]" />
       <div className="pointer-events-none absolute left-1/2 top-6 h-28 w-[min(760px,80vw)] -translate-x-1/2 rounded-full bg-white/70 blur-3xl" />
       <div
         className={classNames(
-          'relative mx-auto flex min-h-svh w-full max-w-[1500px] flex-col px-4 py-4 transition-[padding] duration-300 sm:px-6 lg:px-8',
+          'relative flex min-h-svh w-full flex-col px-4 py-4 transition-[padding] duration-300 sm:px-6 lg:px-8',
           sidebarState !== 'closed' && '2xl:pr-[548px]',
         )}
       >
@@ -522,7 +522,7 @@ function App() {
           onDragEnd={handleDragEnd}
         >
           <section
-            className="grid flex-1 grid-cols-[repeat(4,minmax(280px,1fr))] gap-3 overflow-x-auto pb-3"
+            className="grid flex-1 grid-cols-[repeat(4,minmax(280px,1fr))] gap-3 pb-3"
             aria-label="Kanban board"
           >
             {columns.map((column) => (
