@@ -45,6 +45,15 @@ export type OpenCodeProject = {
   }
 }
 
+export type OpenCodeAgent = {
+  name: string
+  description?: string
+  mode: 'subagent' | 'primary' | 'all'
+  native?: boolean
+  hidden?: boolean
+  color?: string
+}
+
 export type OpenCodeMessage = {
   info: {
     id: string
@@ -317,6 +326,17 @@ export async function listOpenCodeProjects(config: OpenCodeServerConfig) {
   return (await response.json()) as OpenCodeProject[]
 }
 
+export async function listOpenCodeAgents(config: OpenCodeServerConfig) {
+  const response = await fetch(requestUrl(config, '/agent'), requestInit(config))
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode agents request failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as OpenCodeAgent[]
+}
+
 export async function listOpenCodeMessages(
   config: OpenCodeServerConfig,
   input: { sessionID: string; directory: string },
@@ -334,7 +354,14 @@ export async function listOpenCodeMessages(
 
 export async function sendOpenCodePrompt(
   config: OpenCodeServerConfig,
-  input: { sessionID: string; directory: string; text: string; messageID?: string; part?: OpenCodeTextPartInput },
+  input: {
+    sessionID: string
+    directory: string
+    text: string
+    agent?: string
+    messageID?: string
+    part?: OpenCodeTextPartInput
+  },
 ) {
   const url = requestUrl(config, `/session/${input.sessionID}/message`, { directory: input.directory })
   const response = await fetch(
@@ -344,6 +371,7 @@ export async function sendOpenCodePrompt(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...(input.messageID ? { messageID: input.messageID } : {}),
+        ...(input.agent ? { agent: input.agent } : {}),
         parts: [input.part ?? createOpenCodeTextPart(input.text)],
       }),
     }),

@@ -35,6 +35,7 @@ import {
   createOpenCodeTextPart,
   deleteOpenCodeSession,
   defaultOpenCodeServerConfig,
+  listOpenCodeAgents,
   listOpenCodeMessages,
   listOpenCodeProjects,
   loadOpenCodeServerConfig,
@@ -42,6 +43,7 @@ import {
   sendOpenCodePrompt,
   subscribeOpenCodeEvents,
   validateOpenCodeConnection,
+  type OpenCodeAgent,
   type OpenCodeHealthResponse,
   type OpenCodeMessage,
   type OpenCodeMessagePart,
@@ -56,7 +58,8 @@ import {
   type OpenBoardPrepSession,
 } from './openboardDb'
 
-type ColumnId = 'inbox' | 'planned' | 'active' | 'done'
+type BoardAreaId = 'prep' | 'plan' | 'build' | 'review' | 'test'
+type ColumnId = Exclude<BoardAreaId, 'prep'>
 
 type Card = {
   id: string
@@ -73,42 +76,25 @@ type Column = {
 }
 
 const columns: Column[] = [
-  { id: 'inbox', title: 'Inbox', description: 'New thoughts and requests.' },
-  { id: 'planned', title: 'Planned', description: 'Ready for an AI session.' },
-  { id: 'active', title: 'Active', description: 'Currently in progress.' },
-  { id: 'done', title: 'Done', description: 'Ready to review or ship.' },
+  { id: 'plan', title: 'Plan', description: 'Shape work into clear steps.' },
+  { id: 'build', title: 'Build', description: 'Implement scoped changes.' },
+  { id: 'review', title: 'Review', description: 'Inspect diffs, risks, and quality.' },
+  { id: 'test', title: 'Test', description: 'Validate behavior and regressions.' },
 ]
 
-const initialCards: Card[] = [
-  {
-    id: 'card-1',
-    title: 'Define OpenCode handoff',
-    prompt: 'Decide how a board card becomes a scoped OpenCode task.',
-    status: 'inbox',
-    agent: 'Planner',
-  },
-  {
-    id: 'card-2',
-    title: 'Design task context panel',
-    prompt: 'Show prompt, affected files, test output, and current status in one place.',
-    status: 'planned',
-    agent: 'Designer',
-  },
-  {
-    id: 'card-3',
-    title: 'Stream coding progress',
-    prompt: 'Display OpenCode activity as a calm, readable timeline.',
-    status: 'active',
-    agent: 'Builder',
-  },
-  {
-    id: 'card-4',
-    title: 'Review generated diff',
-    prompt: 'Summarize code changes, checks, and risks before the user approves.',
-    status: 'done',
-    agent: 'Reviewer',
-  },
-]
+const initialCards: Card[] = []
+
+type AreaAgentSelections = Record<BoardAreaId, string>
+
+const defaultAgentSelections: AreaAgentSelections = {
+  prep: 'plan',
+  plan: 'plan',
+  build: 'build',
+  review: 'build',
+  test: 'build',
+}
+
+const agentSelectionsStorageKey = 'openboard.agentSelections.v1'
 
 type ConnectionState = {
   config: OpenCodeServerConfig | null
@@ -137,6 +123,9 @@ function App() {
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [projects, setProjects] = useState<OpenCodeProject[]>([])
   const [projectError, setProjectError] = useState<string | null>(null)
+  const [agents, setAgents] = useState<OpenCodeAgent[]>([])
+  const [agentError, setAgentError] = useState<string | null>(null)
+  const [agentSelections, setAgentSelections] = useState(loadAgentSelections)
   const [connection, setConnection] = useState<ConnectionState>(() => {
     const config = loadOpenCodeServerConfig()
 
@@ -231,6 +220,31 @@ function App() {
       .catch((error: unknown) => {
         if (!cancelled) {
           setProjectError(error instanceof Error ? error.message : 'Unable to load OpenCode projects.')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [connection.config, connection.status])
+
+  useEffect(() => {
+    if (connection.status !== 'connected' || !connection.config) {
+      return
+    }
+
+    let cancelled = false
+
+    listOpenCodeAgents(connection.config)
+      .then((nextAgents) => {
+        if (!cancelled) {
+          setAgents(nextAgents.filter((agent) => !agent.hidden))
+          setAgentError(null)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setAgentError(error instanceof Error ? error.message : 'Unable to load OpenCode agents.')
         }
       })
 
@@ -374,6 +388,14 @@ function App() {
     setSessionError(null)
   }
 
+  function handleAgentSelected(area: BoardAreaId, agentName: string) {
+    setAgentSelections((currentSelections) => {
+      const nextSelections = { ...currentSelections, [area]: agentName }
+      saveAgentSelections(nextSelections)
+      return nextSelections
+    })
+  }
+
   async function handlePrepSessionCreated(input: { title: string; projectDirectory: string }) {
     if (!connection.config) {
       setConnectionModalOpen(true)
@@ -445,6 +467,7 @@ function App() {
         sessionID: activePrepSession.opencodeSessionId,
         directory: activePrepSession.projectDirectory,
         text,
+        agent: selectedAgentName(agentSelections.prep, agents),
         messageID,
         part,
       })
@@ -513,6 +536,10 @@ function App() {
           <PrepLane
             prepSessions={prepSessions}
             activePrepSessionId={activePrepSessionId}
+            agents={agents}
+            agentError={agentError}
+            selectedAgent={agentSelections.prep}
+            onAgentSelected={(agentName) => handleAgentSelected('prep', agentName)}
             onCreate={() => setSidebarState('new')}
             onOpen={handleOpenPrepSession}
           />
@@ -533,6 +560,9 @@ function App() {
                 key={column.id}
                 column={column}
                 cards={cards.filter((card) => card.status === column.id)}
+                agents={agents}
+                selectedAgent={agentSelections[column.id]}
+                onAgentSelected={(agentName) => handleAgentSelected(column.id, agentName)}
               />
             ))}
           </section>
@@ -692,11 +722,19 @@ function ConnectionModal({
 function PrepLane({
   prepSessions,
   activePrepSessionId,
+  agents,
+  agentError,
+  selectedAgent,
+  onAgentSelected,
   onCreate,
   onOpen,
 }: {
   prepSessions: OpenBoardPrepSession[]
   activePrepSessionId: string | null
+  agents: OpenCodeAgent[]
+  agentError: string | null
+  selectedAgent: string
+  onAgentSelected: (agentName: string) => void
   onCreate: () => void
   onOpen: (session: OpenBoardPrepSession) => void
 }) {
@@ -709,13 +747,22 @@ function PrepLane({
             Planning sessions pinned to their OpenCode projects.
           </p>
         </div>
-        <Button
-          className="shrink-0 rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.30)] transition hover:bg-[#0a84ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
-          type="button"
-          onClick={onCreate}
-        >
-          Create
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <AreaAgentSelect
+            agents={agents}
+            areaLabel="Prep"
+            error={agentError}
+            value={selectedAgent}
+            onChange={onAgentSelected}
+          />
+          <Button
+            className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.30)] transition hover:bg-[#0a84ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+            type="button"
+            onClick={onCreate}
+          >
+            Create
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-1" aria-label="Prep sessions">
@@ -1049,6 +1096,41 @@ function OptionDetail({ label, value }: { label: string; value: string }) {
   )
 }
 
+function AreaAgentSelect({
+  agents,
+  areaLabel,
+  error,
+  value,
+  onChange,
+}: {
+  agents: OpenCodeAgent[]
+  areaLabel: string
+  error?: string | null
+  value: string
+  onChange: (agentName: string) => void
+}) {
+  const agentOptions = normalizedAgentOptions(agents)
+
+  return (
+    <label className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/58 px-2.5 py-1.5 text-xs font-medium text-[#6e6e73] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+      <span className="sr-only">Agent for {areaLabel}</span>
+      <span aria-hidden="true">Agent</span>
+      <select
+        className="max-w-28 bg-transparent text-xs font-semibold text-[#007aff] outline-none"
+        value={value}
+        title={error ?? `Agent for ${areaLabel}`}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {agentOptions.map((agent) => (
+          <option key={agent.name} value={agent.name}>
+            {displayAgentName(agent.name)}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 function MessageList({ messages, busy }: { messages: OpenCodeMessage[]; busy: boolean }) {
   if (messages.length === 0) {
     return (
@@ -1198,7 +1280,19 @@ function formatMessageError(error: unknown) {
   return 'OpenCode returned an error for this message.'
 }
 
-function KanbanColumn({ column, cards }: { column: Column; cards: Card[] }) {
+function KanbanColumn({
+  column,
+  cards,
+  agents,
+  selectedAgent,
+  onAgentSelected,
+}: {
+  column: Column
+  cards: Card[]
+  agents: OpenCodeAgent[]
+  selectedAgent: string
+  onAgentSelected: (agentName: string) => void
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards])
 
@@ -1217,9 +1311,17 @@ function KanbanColumn({ column, cards }: { column: Column; cards: Card[] }) {
           </h2>
           <p className="mt-0.5 text-sm text-[#86868b]">{column.description}</p>
         </div>
-        <span className="grid size-7 place-items-center rounded-full border border-white/70 bg-white/58 text-xs font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
-          {cards.length}
-        </span>
+        <div className="grid justify-items-end gap-2">
+          <span className="grid size-7 place-items-center rounded-full border border-white/70 bg-white/58 text-xs font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+            {cards.length}
+          </span>
+          <AreaAgentSelect
+            agents={agents}
+            areaLabel={column.title}
+            value={selectedAgent}
+            onChange={onAgentSelected}
+          />
+        </div>
       </header>
 
       <SortableContext items={cardIds} strategy={rectSortingStrategy}>
@@ -1227,6 +1329,11 @@ function KanbanColumn({ column, cards }: { column: Column; cards: Card[] }) {
           {cards.map((card) => (
             <SortableTaskCard key={card.id} card={card} />
           ))}
+          {cards.length === 0 ? (
+            <div className="rounded-[24px] border border-dashed border-white/70 bg-white/28 px-4 py-6 text-center text-sm leading-5 text-[#86868b] backdrop-blur-xl">
+              Drop work here when it is ready for {displayAgentName(selectedAgent)}.
+            </div>
+          ) : null}
         </div>
       </SortableContext>
     </article>
@@ -1331,6 +1438,49 @@ function getConnectionDotColor(status: ConnectionState['status']) {
   }
 
   return 'bg-[#86868b]'
+}
+
+function loadAgentSelections() {
+  const storedValue = localStorage.getItem(agentSelectionsStorageKey)
+
+  if (!storedValue) {
+    return defaultAgentSelections
+  }
+
+  try {
+    return { ...defaultAgentSelections, ...JSON.parse(storedValue) } as AreaAgentSelections
+  } catch {
+    return defaultAgentSelections
+  }
+}
+
+function saveAgentSelections(selections: AreaAgentSelections) {
+  localStorage.setItem(agentSelectionsStorageKey, JSON.stringify(selections))
+}
+
+function normalizedAgentOptions(agents: OpenCodeAgent[]) {
+  const map = new Map<string, OpenCodeAgent>()
+
+  agents.forEach((agent) => map.set(agent.name, agent))
+  Object.values(defaultAgentSelections).forEach((agentName) => {
+    if (!map.has(agentName)) {
+      map.set(agentName, { name: agentName, mode: 'all' })
+    }
+  })
+
+  return Array.from(map.values()).sort((a, b) => displayAgentName(a.name).localeCompare(displayAgentName(b.name)))
+}
+
+function selectedAgentName(agentName: string, agents: OpenCodeAgent[]) {
+  return normalizedAgentOptions(agents).some((agent) => agent.name === agentName) ? agentName : 'build'
+}
+
+function displayAgentName(agentName: string) {
+  return agentName
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 function formatRelativeTime(timestamp: number) {
