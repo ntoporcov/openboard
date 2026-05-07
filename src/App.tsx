@@ -1711,7 +1711,17 @@ function normalizedAgentOptions(agents: OpenCodeAgent[]) {
 }
 
 function selectedAgentName(agentName: string, agents: OpenCodeAgent[]) {
-  return normalizedAgentOptions(agents).some((agent) => agent.name === agentName) ? agentName : 'build'
+  const availableAgentNames = new Set(agents.map((agent) => agent.name))
+
+  if (availableAgentNames.has(agentName)) {
+    return agentName
+  }
+
+  if (availableAgentNames.has('build')) {
+    return 'build'
+  }
+
+  return agents[0]?.name
 }
 
 function displayAgentName(agentName: string) {
