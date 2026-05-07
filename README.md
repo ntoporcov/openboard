@@ -36,7 +36,7 @@ The production build is written to `docs/` for GitHub Pages and should be commit
 
 ## OpenCode Plugin
 
-This repo also contains the npm package for the accompanying OpenCode plugin in `packages/openboard-opencode-plugin`.
+This repo also contains the GitHub Packages npm package for the accompanying OpenCode plugin in `packages/openboard-opencode-plugin`.
 
 For local repo use, `opencode.json` loads `.opencode/plugins/openboard.js`. Installing or loading the plugin injects the default OpenBoard agents:
 
@@ -46,10 +46,10 @@ For local repo use, `opencode.json` loads `.opencode/plugins/openboard.js`. Inst
 - `openboard-reviewer`
 - `openboard-tester`
 
-The plugin adds `openboard_move_ticket` and `openboard_note_ticket`. Set `OPENBOARD_API_URL` when a board API is available; until then, tool calls still appear as OpenCode tool metadata but do not mutate the browser-only board state.
+The plugin adds `openboard_start_frontend`, `openboard_move_ticket`, and `openboard_note_ticket`. `openboard_start_frontend` serves the bundled kanban UI at `http://127.0.0.1:4789/openboard/` by default. Set `OPENBOARD_API_URL` when a board API is available; until then, tool calls still appear as OpenCode tool metadata but do not mutate the browser-only board state.
 
-To publish the plugin from this monorepo, publish the package directory rather than creating a separate repo:
+To publish the plugin from this monorepo to GitHub Packages, publish the package workspace rather than creating a separate repo:
 
 ```sh
-npm publish --workspace openboard-opencode-plugin
+npm publish --workspace @ntoporcov/openboard-opencode-plugin
 ```

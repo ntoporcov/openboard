@@ -1,3 +1,5 @@
+import type { Card } from './app/types'
+
 export type OpenBoardPrepSession = {
   id: string
   title: string
@@ -9,8 +11,10 @@ export type OpenBoardPrepSession = {
 }
 
 const dbName = 'openboard'
-const dbVersion = 1
+const dbVersion = 2
 const prepSessionStore = 'prepSessions'
+const cardStore = 'cards'
+let prepSessionIdCounter = 0
 
 function openDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -24,6 +28,11 @@ function openDatabase() {
         store.createIndex('updatedAt', 'updatedAt')
         store.createIndex('opencodeSessionId', 'opencodeSessionId', { unique: true })
       }
+
+      if (!database.objectStoreNames.contains(cardStore)) {
+        const store = database.createObjectStore(cardStore, { keyPath: 'id' })
+        store.createIndex('status', 'status')
+      }
     }
 
     request.onerror = () => reject(request.error ?? new Error('Unable to open OpenBoard database.'))
@@ -32,14 +41,15 @@ function openDatabase() {
 }
 
 async function transaction<T>(
+  storeName: string,
   mode: IDBTransactionMode,
   callback: (store: IDBObjectStore) => IDBRequest<T> | void,
 ) {
   const database = await openDatabase()
 
   return new Promise<T>((resolve, reject) => {
-    const tx = database.transaction(prepSessionStore, mode)
-    const store = tx.objectStore(prepSessionStore)
+    const tx = database.transaction(storeName, mode)
+    const store = tx.objectStore(storeName)
     const request = callback(store)
     let result = undefined as T
 
@@ -62,20 +72,65 @@ async function transaction<T>(
 }
 
 export async function listPrepSessions() {
-  const sessions = await transaction<OpenBoardPrepSession[]>('readonly', (store) => store.getAll())
+  const sessions = await transaction<OpenBoardPrepSession[]>(prepSessionStore, 'readonly', (store) => store.getAll())
 
   return sessions.sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
 export async function savePrepSession(session: OpenBoardPrepSession) {
-  await transaction<IDBValidKey>('readwrite', (store) => store.put(session))
+  await transaction<IDBValidKey>(prepSessionStore, 'readwrite', (store) => store.put(session))
   return session
 }
 
 export async function deletePrepSession(id: string) {
-  await transaction<undefined>('readwrite', (store) => store.delete(id))
+  await transaction<undefined>(prepSessionStore, 'readwrite', (store) => store.delete(id))
+}
+
+export async function listCards() {
+  return transaction<Card[]>(cardStore, 'readonly', (store) => store.getAll())
+}
+
+export async function saveCard(card: Card) {
+  await transaction<IDBValidKey>(cardStore, 'readwrite', (store) => store.put(card))
+  return card
+}
+
+export async function saveCards(cards: Card[]) {
+  const database = await openDatabase()
+
+  return new Promise<Card[]>((resolve, reject) => {
+    const tx = database.transaction(cardStore, 'readwrite')
+    const store = tx.objectStore(cardStore)
+
+    cards.forEach((card) => store.put(card))
+
+    tx.oncomplete = () => {
+      database.close()
+      resolve(cards)
+    }
+    tx.onerror = () => {
+      database.close()
+      reject(tx.error ?? new Error('OpenBoard database transaction failed.'))
+    }
+  })
 }
 
 export function createPrepSessionId() {
-  return `prep_${Date.now().toString(36)}_${crypto.randomUUID()}`
+  prepSessionIdCounter = (prepSessionIdCounter + 1) % 0x1000
+
+  return `prep_${Date.now().toString(36)}_${prepSessionIdCounter.toString(36)}_${randomIdSegment(18)}`
+}
+
+function randomIdSegment(length: number) {
+  const chars = '0123456789abcdefghijklmnopqrstuvwxyz'
+  const cryptoObject = globalThis.crypto
+
+  if (cryptoObject?.getRandomValues) {
+    const bytes = new Uint8Array(length)
+    cryptoObject.getRandomValues(bytes)
+
+    return Array.from(bytes, (byte) => chars[byte % chars.length]).join('')
+  }
+
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }

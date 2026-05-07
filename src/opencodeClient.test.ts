@@ -138,7 +138,7 @@ describe('OpenCode chat client', () => {
     expect(new Headers(init.headers).get('Authorization')).toBe('Basic dXNlcjpwYXNz')
   })
 
-  it('deletes the scoped OpenCode session', async () => {
+  it('deletes the OpenCode session', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(true), {
         status: 200,
@@ -147,14 +147,10 @@ describe('OpenCode chat client', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(
-      deleteOpenCodeSession(config, { sessionID: 'ses_1', directory: '/Users/example/project' }),
-    ).resolves.toBe(true)
+    await expect(deleteOpenCodeSession(config, { sessionID: 'ses_1' })).resolves.toBe(true)
 
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
-    expect(url.toString()).toBe(
-      'http://127.0.0.1:4096/session/ses_1?directory=%2FUsers%2Fexample%2Fproject',
-    )
+    expect(url.toString()).toBe('http://127.0.0.1:4096/session/ses_1')
     expect(init.method).toBe('DELETE')
   })
 })

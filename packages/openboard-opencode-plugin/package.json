@@ -1,5 +1,5 @@
 {
-  "name": "openboard-opencode-plugin",
+  "name": "@ntoporcov/openboard-opencode-plugin",
   "version": "0.1.0",
   "description": "OpenCode plugin and board agents for OpenBoard.",
   "type": "module",
@@ -7,9 +7,13 @@
   "exports": {
     ".": "./index.js"
   },
+  "scripts": {
+    "prepack": "node ./scripts/sync-web.mjs"
+  },
   "files": [
     "index.js",
     "agents",
+    "web",
     "README.md"
   ],
   "keywords": [
@@ -18,10 +22,16 @@
     "openboard"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ntoporcov/openboard.git",
+    "directory": "packages/openboard-opencode-plugin"
+  },
   "dependencies": {
     "@opencode-ai/plugin": "^1.14.39"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://npm.pkg.github.com"
   }
 }

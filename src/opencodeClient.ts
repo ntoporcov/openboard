@@ -25,6 +25,7 @@ export type OpenCodeSession = {
   title: string
   directory: string
   projectID: string
+  parentID?: string
   workspaceID?: string
   time: {
     created: number
@@ -109,6 +110,35 @@ export type OpenCodeEvent = {
     info?: unknown
     part?: OpenCodeMessagePart
     [key: string]: unknown
+  }
+}
+
+export type OpenCodeQuestionRequest = {
+  id: string
+  sessionID: string
+  questions: Array<{
+    question: string
+    header: string
+    options: Array<{ label: string; description: string }>
+    multiple?: boolean
+    custom?: boolean
+  }>
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
+export type OpenCodePermissionRequest = {
+  id: string
+  sessionID: string
+  permission: string
+  patterns: string[]
+  metadata: Record<string, unknown>
+  always: string[]
+  tool?: {
+    messageID: string
+    callID: string
   }
 }
 
@@ -306,9 +336,9 @@ export async function createOpenCodeSession(
 
 export async function deleteOpenCodeSession(
   config: OpenCodeServerConfig,
-  input: { sessionID: string; directory: string },
+  input: { sessionID: string },
 ) {
-  const url = requestUrl(config, `/session/${input.sessionID}`, { directory: input.directory })
+  const url = requestUrl(config, `/session/${input.sessionID}`)
   const response = await fetch(url, requestInit(config, { method: 'DELETE' }))
 
   if (!response.ok) {
@@ -317,6 +347,20 @@ export async function deleteOpenCodeSession(
   }
 
   return (await response.json()) as boolean
+}
+
+export async function listOpenCodeSessionChildren(
+  config: OpenCodeServerConfig,
+  input: { sessionID: string },
+) {
+  const response = await fetch(requestUrl(config, `/session/${input.sessionID}/children`), requestInit(config))
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode session children request failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as OpenCodeSession[]
 }
 
 export async function listOpenCodeProjects(config: OpenCodeServerConfig) {
@@ -339,6 +383,70 @@ export async function listOpenCodeAgents(config: OpenCodeServerConfig) {
   }
 
   return (await response.json()) as OpenCodeAgent[]
+}
+
+export async function listOpenCodeQuestions(config: OpenCodeServerConfig) {
+  const response = await fetch(requestUrl(config, '/question'), requestInit(config))
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode questions request failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as OpenCodeQuestionRequest[]
+}
+
+export async function replyOpenCodeQuestion(
+  config: OpenCodeServerConfig,
+  input: { requestID: string; answers: string[][] },
+) {
+  const response = await fetch(
+    requestUrl(config, `/question/${input.requestID}/reply`),
+    requestInit(config, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: input.answers }),
+    }),
+  )
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode question reply failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as boolean
+}
+
+export async function listOpenCodePermissions(config: OpenCodeServerConfig) {
+  const response = await fetch(requestUrl(config, '/permission'), requestInit(config))
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode permissions request failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as OpenCodePermissionRequest[]
+}
+
+export async function replyOpenCodePermission(
+  config: OpenCodeServerConfig,
+  input: { requestID: string; reply: 'once' | 'always' | 'reject' },
+) {
+  const response = await fetch(
+    requestUrl(config, `/permission/${input.requestID}/reply`),
+    requestInit(config, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reply: input.reply }),
+    }),
+  )
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode permission reply failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as boolean
 }
 
 export async function listOpenCodeMessages(

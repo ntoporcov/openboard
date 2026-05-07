@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist-ssr
+packages/openboard-opencode-plugin/web
 *.local
 
 # Editor directories and files

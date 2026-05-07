@@ -15,6 +15,7 @@
   min-height: 100svh;
   color: var(--ob-text);
   background: var(--ob-bg);
+  overscroll-behavior-x: none;
 }
 
 .openboard-app[data-theme="cupertino"] {
@@ -30,6 +31,7 @@
   --ob-surface: rgb(255 255 255 / 0.55);
   --ob-surface-strong: rgb(255 255 255 / 0.72);
   --ob-surface-soft: rgb(255 255 255 / 0.38);
+  --ob-menu: #ffffff;
   --ob-border: rgb(255 255 255 / 0.7);
   --ob-border-strong: rgb(255 255 255 / 0.82);
   --ob-empty: rgb(0 0 0 / 0.045);
@@ -61,6 +63,7 @@
   --ob-surface: rgb(255 255 255 / 0.78);
   --ob-surface-strong: rgb(255 255 255 / 0.9);
   --ob-surface-soft: rgb(255 255 255 / 0.62);
+  --ob-menu: #ffffff;
   --ob-border: rgb(26 26 26 / 0.12);
   --ob-border-strong: rgb(26 26 26 / 0.18);
   --ob-empty: rgb(26 26 26 / 0.045);
@@ -92,6 +95,7 @@
   --ob-surface: rgb(28 28 30 / 0.58);
   --ob-surface-strong: rgb(44 44 46 / 0.76);
   --ob-surface-soft: rgb(28 28 30 / 0.42);
+  --ob-menu: #1c1c1e;
   --ob-border: rgb(255 255 255 / 0.13);
   --ob-border-strong: rgb(255 255 255 / 0.18);
   --ob-empty: rgb(255 255 255 / 0.07);
@@ -119,6 +123,7 @@
   --ob-surface: rgb(20 20 20 / 0.78);
   --ob-surface-strong: rgb(28 28 28 / 0.9);
   --ob-surface-soft: rgb(16 16 16 / 0.66);
+  --ob-menu: #1c1c1c;
   --ob-border: rgb(238 238 238 / 0.13);
   --ob-border-strong: rgb(238 238 238 / 0.18);
   --ob-empty: rgb(238 238 238 / 0.07);
@@ -151,6 +156,7 @@
     --ob-surface: rgb(255 255 255 / 0.55);
     --ob-surface-strong: rgb(255 255 255 / 0.72);
     --ob-surface-soft: rgb(255 255 255 / 0.38);
+    --ob-menu: #ffffff;
     --ob-border: rgb(255 255 255 / 0.7);
     --ob-border-strong: rgb(255 255 255 / 0.82);
     --ob-empty: rgb(0 0 0 / 0.045);
@@ -177,6 +183,7 @@
     --ob-surface: rgb(255 255 255 / 0.78);
     --ob-surface-strong: rgb(255 255 255 / 0.9);
     --ob-surface-soft: rgb(255 255 255 / 0.62);
+    --ob-menu: #ffffff;
     --ob-border: rgb(26 26 26 / 0.12);
     --ob-border-strong: rgb(26 26 26 / 0.18);
     --ob-empty: rgb(26 26 26 / 0.045);
@@ -244,6 +251,7 @@
 }
 
 .ob-card,
+.ob-static-card,
 .ob-pill,
 .ob-menu {
   border: 1px solid var(--ob-border);
@@ -252,8 +260,48 @@
   box-shadow: var(--ob-card-shadow);
 }
 
+.ob-menu {
+  background: var(--ob-menu);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 .ob-card:hover {
   background: color-mix(in srgb, var(--ob-surface-strong) 86%, var(--ob-primary) 14%);
+}
+
+.ob-question-step {
+  background: color-mix(in srgb, var(--ob-muted) 34%, transparent);
+}
+
+.ob-question-step-active {
+  background: var(--ob-accent);
+}
+
+.ob-question-option {
+  border: 1px solid color-mix(in srgb, var(--ob-border) 72%, var(--ob-accent) 28%);
+  background: color-mix(in srgb, var(--ob-surface-strong) 92%, var(--ob-accent) 8%);
+}
+
+.ob-question-option:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ob-accent) 58%, var(--ob-border));
+  background: color-mix(in srgb, var(--ob-surface-strong) 82%, var(--ob-accent) 18%);
+}
+
+.ob-question-option-mark {
+  border: 1px solid color-mix(in srgb, var(--ob-accent) 48%, var(--ob-border));
+  color: var(--ob-primary-text);
+  background: var(--ob-surface-strong);
+}
+
+.ob-question-option-selected {
+  border-color: color-mix(in srgb, var(--ob-accent) 72%, var(--ob-border));
+  background: color-mix(in srgb, var(--ob-surface-strong) 74%, var(--ob-accent) 26%);
+}
+
+.ob-question-option-selected .ob-question-option-mark {
+  border-color: var(--ob-accent);
+  background: var(--ob-accent);
 }
 
 .ob-card-active,
@@ -298,6 +346,11 @@
 .ob-input:focus {
   border-color: color-mix(in srgb, var(--ob-accent) 55%, transparent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--ob-accent) 14%, transparent);
+}
+
+.ob-code {
+  color: var(--ob-accent);
+  background: var(--ob-empty);
 }
 
 .ob-empty,
@@ -366,6 +419,7 @@
   --ob-surface: #fcfcfc;
   --ob-surface-strong: #ffffff;
   --ob-surface-soft: #f3f3f3;
+  --ob-menu: #ffffff;
   --ob-border: #e5e5e5;
   --ob-border-strong: rgb(0 0 0 / 0.162);
   --ob-empty: rgb(0 0 0 / 0.031);
@@ -400,6 +454,7 @@
   --ob-surface: #121212;
   --ob-surface-strong: #1c1c1c;
   --ob-surface-soft: #1e1e1e;
+  --ob-menu: #1c1c1c;
   --ob-border: #282828;
   --ob-border-strong: rgb(255 255 255 / 0.195);
   --ob-empty: rgb(255 255 255 / 0.031);
@@ -432,6 +487,7 @@
     --ob-surface: #fcfcfc;
     --ob-surface-strong: #ffffff;
     --ob-surface-soft: #f3f3f3;
+    --ob-menu: #ffffff;
     --ob-border: #e5e5e5;
     --ob-border-strong: rgb(0 0 0 / 0.162);
     --ob-empty: rgb(0 0 0 / 0.031);
@@ -448,12 +504,14 @@
 .openboard-app[data-theme="opencode"] .ob-user-bubble,
 .openboard-app[data-theme="opencode"] .ob-input,
 .openboard-app[data-theme="opencode"] .ob-card,
+.openboard-app[data-theme="opencode"] .ob-static-card,
 .openboard-app[data-theme="opencode"] .ob-pill,
 .openboard-app[data-theme="opencode"] .ob-menu,
 .openboard-app[data-theme="opencode"] .ob-surface,
 .openboard-app[data-theme="opencode"] .ob-column,
 .openboard-app[data-theme="opencode"] .ob-sidebar,
 .openboard-app[data-theme="opencode"] .ob-empty,
+.openboard-app[data-theme="opencode"] .ob-static-card,
 .openboard-app[data-theme="opencode"] .ob-dropzone {
   box-shadow: none;
 }
@@ -469,6 +527,7 @@
 .openboard-app[data-theme="opencode"] .ob-secondary-button,
 .openboard-app[data-theme="opencode"] .ob-icon-button,
 .openboard-app[data-theme="opencode"] .ob-card,
+.openboard-app[data-theme="opencode"] .ob-static-card,
 .openboard-app[data-theme="opencode"] .ob-pill,
 .openboard-app[data-theme="opencode"] .ob-menu,
 .openboard-app[data-theme="opencode"] .ob-surface,
@@ -576,6 +635,7 @@ body {
   min-width: 320px;
   min-height: 100svh;
   margin: 0;
+  overscroll-behavior-x: none;
 }
 
 button,
