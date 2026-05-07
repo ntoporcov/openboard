@@ -11,6 +11,346 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.openboard-app {
+  min-height: 100svh;
+  color: var(--ob-text);
+  background: var(--ob-bg);
+}
+
+.openboard-app[data-theme="cupertino"] {
+  --ob-bg: #f5f5f7;
+  --ob-text: #1d1d1f;
+  --ob-muted: #6e6e73;
+  --ob-muted-strong: #86868b;
+  --ob-accent: #007aff;
+  --ob-accent-strong: #0066d6;
+  --ob-primary: #007aff;
+  --ob-primary-hover: #0a84ff;
+  --ob-primary-text: #ffffff;
+  --ob-surface: rgb(255 255 255 / 0.55);
+  --ob-surface-strong: rgb(255 255 255 / 0.72);
+  --ob-surface-soft: rgb(255 255 255 / 0.38);
+  --ob-border: rgb(255 255 255 / 0.7);
+  --ob-border-strong: rgb(255 255 255 / 0.82);
+  --ob-empty: rgb(0 0 0 / 0.045);
+  --ob-input: rgb(255 255 255 / 0.86);
+  --ob-input-border: rgb(0 0 0 / 0.1);
+  --ob-danger-bg: rgb(255 59 48 / 0.05);
+  --ob-danger-border: rgb(255 59 48 / 0.15);
+  --ob-danger-text: #b42318;
+  --ob-warning-bg: rgb(255 204 0 / 0.1);
+  --ob-warning-border: rgb(255 204 0 / 0.2);
+  --ob-warning-text: #6e5b00;
+  --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.82), 0 24px 70px rgb(0 64 128 / 0.12);
+  --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 14px 34px rgb(0 64 128 / 0.1);
+  --ob-backdrop: radial-gradient(circle at 12% 0%, rgb(0 122 255 / 0.2), transparent 32%), radial-gradient(circle at 78% 8%, rgb(90 200 250 / 0.18), transparent 34%), linear-gradient(180deg, #ffffff 0%, #f5f7fb 44%, #eef3f9 100%);
+  --ob-glow: rgb(255 255 255 / 0.7);
+  --ob-logo: linear-gradient(145deg, #0a84ff, #0066d6);
+}
+
+.openboard-app[data-theme="opencode"] {
+  --ob-bg: #ffffff;
+  --ob-text: #1a1a1a;
+  --ob-muted: #737373;
+  --ob-muted-strong: #8a8a8a;
+  --ob-accent: #3b7dd8;
+  --ob-accent-strong: #2864b8;
+  --ob-primary: #3b7dd8;
+  --ob-primary-hover: #2f6fc4;
+  --ob-primary-text: #ffffff;
+  --ob-surface: rgb(255 255 255 / 0.78);
+  --ob-surface-strong: rgb(255 255 255 / 0.9);
+  --ob-surface-soft: rgb(255 255 255 / 0.62);
+  --ob-border: rgb(26 26 26 / 0.12);
+  --ob-border-strong: rgb(26 26 26 / 0.18);
+  --ob-empty: rgb(26 26 26 / 0.045);
+  --ob-input: rgb(255 255 255 / 0.94);
+  --ob-input-border: rgb(26 26 26 / 0.14);
+  --ob-danger-bg: rgb(209 56 61 / 0.08);
+  --ob-danger-border: rgb(209 56 61 / 0.18);
+  --ob-danger-text: #a9252a;
+  --ob-warning-bg: rgb(214 140 39 / 0.12);
+  --ob-warning-border: rgb(214 140 39 / 0.24);
+  --ob-warning-text: #8a5919;
+  --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.76), 0 18px 50px rgb(26 26 26 / 0.09);
+  --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.78), 0 12px 30px rgb(26 26 26 / 0.08);
+  --ob-backdrop: radial-gradient(circle at 14% 0%, rgb(59 125 216 / 0.14), transparent 30%), radial-gradient(circle at 84% 12%, rgb(214 140 39 / 0.12), transparent 32%), linear-gradient(180deg, #ffffff 0%, #fafafa 52%, #f3f3f3 100%);
+  --ob-glow: rgb(255 255 255 / 0.7);
+  --ob-logo: linear-gradient(145deg, #3b7dd8, #318795);
+}
+
+.openboard-app[data-theme="cupertino"][data-mode="dark"],
+.openboard-app[data-theme="cupertino"][data-mode="system"] {
+  --ob-bg: #050507;
+  --ob-text: #f5f5f7;
+  --ob-muted: #a1a1a6;
+  --ob-muted-strong: #8e8e93;
+  --ob-accent: #0a84ff;
+  --ob-accent-strong: #66b6ff;
+  --ob-primary: #0a84ff;
+  --ob-primary-hover: #409cff;
+  --ob-surface: rgb(28 28 30 / 0.58);
+  --ob-surface-strong: rgb(44 44 46 / 0.76);
+  --ob-surface-soft: rgb(28 28 30 / 0.42);
+  --ob-border: rgb(255 255 255 / 0.13);
+  --ob-border-strong: rgb(255 255 255 / 0.18);
+  --ob-empty: rgb(255 255 255 / 0.07);
+  --ob-input: rgb(28 28 30 / 0.92);
+  --ob-input-border: rgb(255 255 255 / 0.14);
+  --ob-danger-text: #ffb4ae;
+  --ob-warning-text: #ffd76d;
+  --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 24px 70px rgb(0 0 0 / 0.34);
+  --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.11), 0 14px 34px rgb(0 0 0 / 0.28);
+  --ob-backdrop: radial-gradient(circle at 12% 0%, rgb(10 132 255 / 0.22), transparent 32%), radial-gradient(circle at 78% 8%, rgb(94 92 230 / 0.18), transparent 34%), linear-gradient(180deg, #101014 0%, #08090c 52%, #050507 100%);
+  --ob-glow: rgb(10 132 255 / 0.16);
+}
+
+.openboard-app[data-theme="opencode"][data-mode="dark"],
+.openboard-app[data-theme="opencode"][data-mode="system"] {
+  --ob-bg: #0a0a0a;
+  --ob-text: #eeeeee;
+  --ob-muted: #9a9a9a;
+  --ob-muted-strong: #808080;
+  --ob-accent: #fab283;
+  --ob-accent-strong: #ffc7a3;
+  --ob-primary: #fab283;
+  --ob-primary-hover: #ffc7a3;
+  --ob-primary-text: #0a0a0a;
+  --ob-surface: rgb(20 20 20 / 0.78);
+  --ob-surface-strong: rgb(28 28 28 / 0.9);
+  --ob-surface-soft: rgb(16 16 16 / 0.66);
+  --ob-border: rgb(238 238 238 / 0.13);
+  --ob-border-strong: rgb(238 238 238 / 0.18);
+  --ob-empty: rgb(238 238 238 / 0.07);
+  --ob-input: rgb(20 20 20 / 0.94);
+  --ob-input-border: rgb(238 238 238 / 0.15);
+  --ob-danger-text: #f0a0a6;
+  --ob-warning-text: #f5c36d;
+  --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 22px 66px rgb(0 0 0 / 0.4);
+  --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.32);
+  --ob-backdrop: radial-gradient(circle at 14% 0%, rgb(250 178 131 / 0.17), transparent 30%), radial-gradient(circle at 84% 12%, rgb(157 124 216 / 0.14), transparent 32%), linear-gradient(180deg, #121212 0%, #0d0d0d 48%, #0a0a0a 100%);
+  --ob-glow: rgb(250 178 131 / 0.13);
+  --ob-logo: linear-gradient(145deg, #fab283, #9d7cd8);
+}
+
+@media (prefers-color-scheme: light) {
+  .openboard-app[data-theme][data-mode="system"] {
+    --ob-bg: initial;
+  }
+
+  .openboard-app[data-theme="cupertino"][data-mode="system"] {
+    --ob-bg: #f5f5f7;
+    --ob-text: #1d1d1f;
+    --ob-muted: #6e6e73;
+    --ob-muted-strong: #86868b;
+    --ob-accent: #007aff;
+    --ob-accent-strong: #0066d6;
+    --ob-primary: #007aff;
+    --ob-primary-hover: #0a84ff;
+    --ob-primary-text: #ffffff;
+    --ob-surface: rgb(255 255 255 / 0.55);
+    --ob-surface-strong: rgb(255 255 255 / 0.72);
+    --ob-surface-soft: rgb(255 255 255 / 0.38);
+    --ob-border: rgb(255 255 255 / 0.7);
+    --ob-border-strong: rgb(255 255 255 / 0.82);
+    --ob-empty: rgb(0 0 0 / 0.045);
+    --ob-input: rgb(255 255 255 / 0.86);
+    --ob-input-border: rgb(0 0 0 / 0.1);
+    --ob-danger-text: #b42318;
+    --ob-warning-text: #6e5b00;
+    --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.82), 0 24px 70px rgb(0 64 128 / 0.12);
+    --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 14px 34px rgb(0 64 128 / 0.1);
+    --ob-backdrop: radial-gradient(circle at 12% 0%, rgb(0 122 255 / 0.2), transparent 32%), radial-gradient(circle at 78% 8%, rgb(90 200 250 / 0.18), transparent 34%), linear-gradient(180deg, #ffffff 0%, #f5f7fb 44%, #eef3f9 100%);
+    --ob-glow: rgb(255 255 255 / 0.7);
+  }
+
+  .openboard-app[data-theme="opencode"][data-mode="system"] {
+    --ob-bg: #ffffff;
+    --ob-text: #1a1a1a;
+    --ob-muted: #737373;
+    --ob-muted-strong: #8a8a8a;
+    --ob-accent: #3b7dd8;
+    --ob-accent-strong: #2864b8;
+    --ob-primary: #3b7dd8;
+    --ob-primary-hover: #2f6fc4;
+    --ob-primary-text: #ffffff;
+    --ob-surface: rgb(255 255 255 / 0.78);
+    --ob-surface-strong: rgb(255 255 255 / 0.9);
+    --ob-surface-soft: rgb(255 255 255 / 0.62);
+    --ob-border: rgb(26 26 26 / 0.12);
+    --ob-border-strong: rgb(26 26 26 / 0.18);
+    --ob-empty: rgb(26 26 26 / 0.045);
+    --ob-input: rgb(255 255 255 / 0.94);
+    --ob-input-border: rgb(26 26 26 / 0.14);
+    --ob-danger-text: #a9252a;
+    --ob-warning-text: #8a5919;
+    --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.76), 0 18px 50px rgb(26 26 26 / 0.09);
+    --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.78), 0 12px 30px rgb(26 26 26 / 0.08);
+    --ob-backdrop: radial-gradient(circle at 14% 0%, rgb(59 125 216 / 0.14), transparent 30%), radial-gradient(circle at 84% 12%, rgb(214 140 39 / 0.12), transparent 32%), linear-gradient(180deg, #ffffff 0%, #fafafa 52%, #f3f3f3 100%);
+    --ob-glow: rgb(255 255 255 / 0.7);
+    --ob-logo: linear-gradient(145deg, #3b7dd8, #318795);
+  }
+}
+
+.ob-backdrop {
+  background: var(--ob-backdrop);
+}
+
+.ob-glow {
+  background: var(--ob-glow);
+}
+
+.ob-logo {
+  background: var(--ob-logo);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 12px 28px color-mix(in srgb, var(--ob-primary) 34%, transparent);
+}
+
+.ob-text {
+  color: var(--ob-text);
+}
+
+.ob-muted {
+  color: var(--ob-muted);
+}
+
+.ob-accent,
+.ob-select {
+  color: var(--ob-accent);
+}
+
+.ob-surface,
+.ob-column,
+.ob-sidebar,
+.ob-sidebar-header,
+.ob-sidebar-footer {
+  border: 1px solid var(--ob-border);
+  background: var(--ob-surface);
+  box-shadow: var(--ob-shadow);
+}
+
+.ob-sidebar-header,
+.ob-sidebar-footer {
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-color: var(--ob-border);
+  background: var(--ob-surface-soft);
+  box-shadow: none;
+}
+
+.ob-sidebar-footer {
+  border-top: 1px solid var(--ob-border);
+  border-bottom: 0;
+}
+
+.ob-card,
+.ob-pill,
+.ob-menu {
+  border: 1px solid var(--ob-border);
+  color: var(--ob-text);
+  background: var(--ob-surface-strong);
+  box-shadow: var(--ob-card-shadow);
+}
+
+.ob-card:hover {
+  background: color-mix(in srgb, var(--ob-surface-strong) 86%, var(--ob-primary) 14%);
+}
+
+.ob-card-active,
+.ob-column-over {
+  border-color: color-mix(in srgb, var(--ob-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--ob-surface-strong) 78%, var(--ob-accent) 22%);
+}
+
+.ob-primary {
+  color: var(--ob-primary-text);
+  background: var(--ob-primary);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 12px 26px color-mix(in srgb, var(--ob-primary) 34%, transparent);
+}
+
+.ob-primary:hover {
+  background: var(--ob-primary-hover);
+}
+
+.ob-secondary-button {
+  border: 1px solid var(--ob-border);
+  color: var(--ob-accent);
+  background: var(--ob-surface-strong);
+  box-shadow: var(--ob-card-shadow);
+}
+
+.ob-secondary-button:hover,
+.ob-icon-button:hover {
+  background: color-mix(in srgb, var(--ob-surface-strong) 82%, var(--ob-primary) 18%);
+}
+
+.ob-icon-button {
+  color: var(--ob-muted-strong);
+}
+
+.ob-input {
+  border: 1px solid var(--ob-input-border);
+  color: var(--ob-text);
+  background: var(--ob-input);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.ob-input:focus {
+  border-color: color-mix(in srgb, var(--ob-accent) 55%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ob-accent) 14%, transparent);
+}
+
+.ob-empty,
+.ob-dropzone {
+  border: 1px solid var(--ob-border);
+  color: var(--ob-muted);
+  background: var(--ob-empty);
+}
+
+.ob-dropzone {
+  border-style: dashed;
+}
+
+.ob-user-bubble {
+  color: var(--ob-primary-text);
+  background: var(--ob-primary);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ob-primary) 28%, transparent);
+}
+
+.ob-agent-avatar {
+  color: var(--ob-bg);
+  background: var(--ob-text);
+}
+
+.ob-chat {
+  background: color-mix(in srgb, var(--ob-surface-soft) 40%, transparent);
+}
+
+.ob-danger {
+  border: 1px solid var(--ob-danger-border);
+  color: var(--ob-danger-text);
+  background: var(--ob-danger-bg);
+}
+
+.ob-warning {
+  border: 1px solid var(--ob-warning-border);
+  color: var(--ob-warning-text);
+  background: var(--ob-warning-bg);
+}
+
+.ob-dot {
+  background: var(--ob-accent);
+}
+
+.openboard-app :focus-visible {
+  outline-color: var(--ob-accent);
+}
+
+.openboard-app select option {
+  color: var(--ob-text);
+  background: var(--ob-bg);
+}
+
 body {
   min-width: 320px;
   min-height: 100svh;

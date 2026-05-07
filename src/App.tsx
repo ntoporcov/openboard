@@ -111,6 +111,21 @@ type SessionEvent = {
 
 type SidebarState = 'closed' | 'new' | 'open'
 
+type AppearanceTheme = 'cupertino' | 'opencode'
+type AppearanceMode = 'light' | 'dark' | 'system'
+
+type AppearanceSettings = {
+  theme: AppearanceTheme
+  mode: AppearanceMode
+}
+
+const appearanceStorageKey = 'openboard.appearance.v1'
+
+const defaultAppearanceSettings: AppearanceSettings = {
+  theme: 'cupertino',
+  mode: 'system',
+}
+
 function App() {
   const [cards, setCards] = useState(initialCards)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -126,6 +141,7 @@ function App() {
   const [agents, setAgents] = useState<OpenCodeAgent[]>([])
   const [agentError, setAgentError] = useState<string | null>(null)
   const [agentSelections, setAgentSelections] = useState(loadAgentSelections)
+  const [appearance, setAppearance] = useState(loadAppearanceSettings)
   const [connection, setConnection] = useState<ConnectionState>(() => {
     const config = loadOpenCodeServerConfig()
 
@@ -396,6 +412,14 @@ function App() {
     })
   }
 
+  function handleAppearanceChange(nextAppearance: Partial<AppearanceSettings>) {
+    setAppearance((currentAppearance) => {
+      const updatedAppearance = { ...currentAppearance, ...nextAppearance }
+      saveAppearanceSettings(updatedAppearance)
+      return updatedAppearance
+    })
+  }
+
   async function handlePrepSessionCreated(input: { title: string; projectDirectory: string }) {
     if (!connection.config) {
       setConnectionModalOpen(true)
@@ -484,11 +508,12 @@ function App() {
   }
 
   const connectionLabel = getConnectionLabel(connection)
+  const showGitHubPagesSetup = isGitHubPagesBuild()
 
   return (
-    <main className="relative min-h-svh min-w-max bg-[#f5f5f7] text-[#1d1d1f]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(0,122,255,0.20),transparent_32%),radial-gradient(circle_at_78%_8%,rgba(90,200,250,0.18),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f5f7fb_44%,#eef3f9_100%)]" />
-      <div className="pointer-events-none absolute left-1/2 top-6 h-28 w-[min(760px,80vw)] -translate-x-1/2 rounded-full bg-white/70 blur-3xl" />
+    <main className="openboard-app relative min-h-svh min-w-max" data-mode={appearance.mode} data-theme={appearance.theme}>
+      <div className="ob-backdrop pointer-events-none absolute inset-0" />
+      <div className="ob-glow pointer-events-none absolute left-1/2 top-6 h-28 w-[min(760px,80vw)] -translate-x-1/2 rounded-full blur-3xl" />
       <div
         className="relative flex min-h-svh w-full flex-col py-4"
       >
@@ -498,33 +523,34 @@ function App() {
             sidebarState !== 'closed' && '2xl:right-[548px] 2xl:w-[calc(100vw-548px)]',
           )}
         >
-          <header className="mb-4 flex flex-col gap-3 rounded-[32px] border border-white/70 bg-white/55 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_70px_rgba(0,64,128,0.12)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
+          <header className="ob-surface mb-4 flex flex-col gap-3 rounded-[32px] px-4 py-3 backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-[18px] bg-[linear-gradient(145deg,#0a84ff,#0066d6)] text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_28px_rgba(0,122,255,0.32)]">
+              <div className="ob-logo grid size-10 place-items-center rounded-[18px] text-sm font-semibold text-white">
                 OB
               </div>
               <div>
-                <h1 className="text-[1.05rem] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
+                <h1 className="ob-text text-[1.05rem] font-semibold tracking-[-0.02em]">
                   OpenBoard
                 </h1>
-                <p className="text-sm text-[#6e6e73]">Kanban for AI coding work</p>
+                <p className="ob-muted text-sm">Kanban for AI coding work</p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/50 px-3 py-1.5 text-sm text-[#6e6e73] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+              <AppearanceControls appearance={appearance} onChange={handleAppearanceChange} />
+              <span className="ob-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm backdrop-blur-xl">
                 <span className={classNames('size-2 rounded-full', getConnectionDotColor(connection.status))} />
                 {connectionLabel}
               </span>
               <Button
-                className="rounded-full border border-white/70 bg-white/60 px-4 py-2 text-sm font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_22px_rgba(0,64,128,0.08)] backdrop-blur-xl transition hover:bg-white/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+                className="ob-secondary-button rounded-full px-4 py-2 text-sm font-medium backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2"
                 type="button"
                 onClick={() => setConnectionModalOpen(true)}
               >
                 Connect
               </Button>
               <Button
-                className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.34)] transition hover:bg-[#0a84ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+                className="ob-primary rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2"
                 type="button"
                 onClick={() => setSidebarState('new')}
               >
@@ -532,6 +558,8 @@ function App() {
               </Button>
             </div>
           </header>
+
+          {showGitHubPagesSetup ? <GitHubPagesSetupRecipe /> : null}
 
           <PrepLane
             prepSessions={prepSessions}
@@ -600,6 +628,76 @@ function App() {
   )
 }
 
+function GitHubPagesSetupRecipe() {
+  return (
+    <section className="ob-surface mb-4 rounded-[28px] p-4 backdrop-blur-2xl">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="ob-accent text-xs font-semibold uppercase tracking-[0.16em]">Recommended setup</p>
+          <h2 className="ob-text mt-1 text-[1rem] font-semibold tracking-[-0.02em]">
+            Install the OpenBoard plugin to get the board agents in OpenCode.
+          </h2>
+          <p className="ob-muted mt-1 text-sm leading-5">
+            The hosted app can connect to any OpenCode server, but the plugin adds the Prepper, Planner, Builder,
+            Reviewer, and Tester agents plus board handoff tools.
+          </p>
+        </div>
+        <div className="grid gap-2 text-sm lg:min-w-[420px]">
+          <CodePill value="@ntoporcov:registry=https://npm.pkg.github.com" />
+          <CodePill value={'"plugin": ["@ntoporcov/openboard-opencode-plugin"]'} />
+          <CodePill value="opencode serve --cors https://ntoporcov.github.io" />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CodePill({ value }: { value: string }) {
+  return (
+    <code className="ob-card rounded-2xl px-3 py-2 font-mono text-xs leading-5">
+      {value}
+    </code>
+  )
+}
+
+function AppearanceControls({
+  appearance,
+  onChange,
+}: {
+  appearance: AppearanceSettings
+  onChange: (nextAppearance: Partial<AppearanceSettings>) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="ob-pill inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium backdrop-blur-xl">
+        <span className="sr-only">Theme</span>
+        <span aria-hidden="true">Theme</span>
+        <select
+          className="ob-select max-w-28 bg-transparent text-xs font-semibold outline-none"
+          value={appearance.theme}
+          onChange={(event) => onChange({ theme: event.target.value as AppearanceTheme })}
+        >
+          <option value="cupertino">Cupertino</option>
+          <option value="opencode">OpenCode</option>
+        </select>
+      </label>
+      <label className="ob-pill inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium backdrop-blur-xl">
+        <span className="sr-only">Mode</span>
+        <span aria-hidden="true">Mode</span>
+        <select
+          className="ob-select max-w-24 bg-transparent text-xs font-semibold outline-none"
+          value={appearance.mode}
+          onChange={(event) => onChange({ mode: event.target.value as AppearanceMode })}
+        >
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+    </div>
+  )
+}
+
 function ConnectionModal({
   initialConfig,
   initialError,
@@ -636,16 +734,16 @@ function ConnectionModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/20 px-4 py-6 backdrop-blur-sm">
-      <div className="w-full max-w-[480px] rounded-[34px] border border-white/75 bg-white/72 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_30px_90px_rgba(0,28,64,0.24)] backdrop-blur-2xl">
+      <div className="ob-surface w-full max-w-[480px] rounded-[34px] p-5 backdrop-blur-2xl">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-[-0.02em] text-[#1d1d1f]">Connect OpenCode</h2>
-            <p className="mt-1 text-sm leading-5 text-[#6e6e73]">
+            <h2 className="ob-text text-lg font-semibold tracking-[-0.02em]">Connect OpenCode</h2>
+            <p className="ob-muted mt-1 text-sm leading-5">
               Validate an OpenCode server and cache the connection in this browser.
             </p>
           </div>
           <Button
-            className="grid size-8 place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+            className="ob-icon-button grid size-8 place-items-center rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2"
             type="button"
             aria-label="Close connection dialog"
             onClick={onClose}
@@ -655,10 +753,10 @@ function ConnectionModal({
         </div>
 
         <form className="grid gap-4" onSubmit={handleSubmit}>
-          <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+          <label className="ob-text grid gap-1.5 text-sm font-medium">
             Server URL
             <input
-              className="rounded-2xl border border-white/70 bg-white/60 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+              className="ob-input rounded-2xl px-3 py-2.5 text-sm font-normal outline-none backdrop-blur-xl transition"
               type="url"
               value={formConfig.baseUrl}
               placeholder="http://127.0.0.1:4096"
@@ -668,10 +766,10 @@ function ConnectionModal({
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+            <label className="ob-text grid gap-1.5 text-sm font-medium">
               Username
               <input
-                className="rounded-2xl border border-white/70 bg-white/60 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+                className="ob-input rounded-2xl px-3 py-2.5 text-sm font-normal outline-none backdrop-blur-xl transition"
                 type="text"
                 value={formConfig.username}
                 placeholder="opencode"
@@ -679,10 +777,10 @@ function ConnectionModal({
               />
             </label>
 
-            <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+            <label className="ob-text grid gap-1.5 text-sm font-medium">
               Password
               <input
-                className="rounded-2xl border border-white/70 bg-white/60 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+                className="ob-input rounded-2xl px-3 py-2.5 text-sm font-normal outline-none backdrop-blur-xl transition"
                 type="password"
                 value={formConfig.password}
                 placeholder="Optional"
@@ -692,21 +790,21 @@ function ConnectionModal({
           </div>
 
           {error ? (
-            <p className="rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
+            <p className="ob-danger rounded-2xl px-3 py-2 text-sm leading-5">
               {error}
             </p>
           ) : null}
 
           <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
-              className="rounded-full border border-white/70 bg-white/65 px-4 py-2 text-sm font-medium text-[#1d1d1f] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_18px_rgba(0,0,0,0.06)] backdrop-blur-xl transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              className="ob-secondary-button rounded-full px-4 py-2 text-sm font-medium backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2"
               type="button"
               onClick={onClose}
             >
               Cancel
             </Button>
             <Button
-              className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.30)] transition hover:bg-[#0a84ff] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              className="ob-primary rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
               type="submit"
               disabled={status === 'checking'}
             >
@@ -739,11 +837,11 @@ function PrepLane({
   onOpen: (session: OpenBoardPrepSession) => void
 }) {
   return (
-    <section className="mb-4 rounded-[32px] border border-white/65 bg-white/45 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_18px_48px_rgba(0,64,128,0.10)] backdrop-blur-2xl">
+    <section className="ob-surface mb-4 rounded-[32px] p-3 backdrop-blur-2xl">
       <div className="mb-3 flex items-center justify-between gap-3 px-1">
         <div>
-          <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-[#1d1d1f]">Prep area</h2>
-          <p className="mt-0.5 text-sm text-[#86868b]">
+          <h2 className="ob-text text-[0.95rem] font-semibold tracking-[-0.01em]">Prep area</h2>
+          <p className="ob-muted mt-0.5 text-sm">
             Planning sessions pinned to their OpenCode projects.
           </p>
         </div>
@@ -756,7 +854,7 @@ function PrepLane({
             onChange={onAgentSelected}
           />
           <Button
-            className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.30)] transition hover:bg-[#0a84ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+            className="ob-primary rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2"
             type="button"
             onClick={onCreate}
           >
@@ -770,20 +868,20 @@ function PrepLane({
           <button
             key={session.id}
             className={classNames(
-              'min-w-[280px] rounded-[24px] border bg-white/64 px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_24px_rgba(0,64,128,0.08)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/82 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_16px_34px_rgba(0,64,128,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]',
-              activePrepSessionId === session.id ? 'border-[#007aff]/45' : 'border-white/70',
+              'ob-card min-w-[280px] rounded-[24px] px-4 py-3 text-left backdrop-blur-xl transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2',
+              activePrepSessionId === session.id && 'ob-card-active',
             )}
             type="button"
             onClick={() => onOpen(session)}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="rounded-full border border-white/70 bg-white/58 px-2.5 py-1 text-xs font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] backdrop-blur-xl">
+              <span className="ob-pill ob-accent rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-xl">
                 {session.status}
               </span>
-              <span className="text-xs text-[#86868b]">{formatRelativeTime(session.updatedAt)}</span>
+              <span className="ob-muted text-xs">{formatRelativeTime(session.updatedAt)}</span>
             </div>
-            <p className="truncate text-sm font-semibold text-[#1d1d1f]">{session.title}</p>
-            <p className="mt-1 truncate text-xs text-[#6e6e73]">{session.projectDirectory}</p>
+            <p className="ob-text truncate text-sm font-semibold">{session.title}</p>
+            <p className="ob-muted mt-1 truncate text-xs">{session.projectDirectory}</p>
           </button>
         ))}
       </div>
@@ -882,22 +980,22 @@ function PrepSidebar({
   }
 
   return (
-    <aside className="fixed inset-x-3 bottom-3 top-3 z-40 flex w-auto flex-col overflow-hidden rounded-[34px] border border-white/55 bg-white/36 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_30px_90px_rgba(0,28,64,0.28)] backdrop-blur-[34px] backdrop-saturate-150 sm:inset-x-auto sm:right-4 sm:w-[min(500px,calc(100vw-2rem))] 2xl:right-6">
-      <header className="border-b border-white/45 bg-white/38 px-5 py-4 backdrop-blur-2xl backdrop-saturate-150">
+    <aside className="ob-sidebar fixed inset-x-3 bottom-3 top-3 z-40 flex w-auto flex-col overflow-hidden rounded-[34px] backdrop-blur-[34px] backdrop-saturate-150 sm:inset-x-auto sm:right-4 sm:w-[min(500px,calc(100vw-2rem))] 2xl:right-6">
+      <header className="ob-sidebar-header px-5 py-4 backdrop-blur-2xl backdrop-saturate-150">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Prep chat</p>
-            <h2 className="mt-1 truncate text-lg font-semibold tracking-[-0.02em] text-[#1d1d1f]">
+            <p className="ob-muted text-xs font-medium uppercase tracking-[0.12em]">Prep chat</p>
+            <h2 className="ob-text mt-1 truncate text-lg font-semibold tracking-[-0.02em]">
               {mode === 'new' ? 'Create OpenCode session' : session?.title}
             </h2>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {mode === 'open' ? (
               <details className="group relative">
-                <summary className="grid size-8 cursor-pointer list-none place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff] [&::-webkit-details-marker]:hidden" aria-label="Prep session options">
+                <summary className="ob-icon-button grid size-8 cursor-pointer list-none place-items-center rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden" aria-label="Prep session options">
                   <span className="text-xl leading-none">…</span>
                 </summary>
-                <div className="absolute right-0 top-10 z-10 w-[min(20rem,calc(100vw-3rem))] overflow-hidden rounded-[24px] border border-white/70 bg-white/90 p-3 shadow-[0_18px_50px_rgba(0,28,64,0.18)] backdrop-blur-2xl">
+                <div className="ob-menu absolute right-0 top-10 z-10 w-[min(20rem,calc(100vw-3rem))] overflow-hidden rounded-[24px] p-3 backdrop-blur-2xl">
                   <div className="grid gap-2 text-sm">
                     <OptionDetail label="Project" value={session?.projectDirectory ?? 'No project'} />
                     <OptionDetail label="OpenCode ID" value={session?.opencodeSessionId ?? 'No session'} />
@@ -915,7 +1013,7 @@ function PrepSidebar({
               </details>
             ) : null}
             <Button
-              className="grid size-8 place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+              className="ob-icon-button grid size-8 place-items-center rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2"
               type="button"
               aria-label="Close prep chat"
               onClick={onClose}
@@ -935,28 +1033,28 @@ function PrepSidebar({
         />
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-white/[0.08] px-4 py-4">
+          <div className="ob-chat flex-1 overflow-y-auto px-4 py-4">
             <MessageList messages={messages} busy={status === 'working'} />
             <div ref={bottomRef} />
           </div>
 
-          <form className="border-t border-white/45 bg-white/42 p-4 backdrop-blur-2xl backdrop-saturate-150" onSubmit={handleSubmit}>
+          <form className="ob-sidebar-footer p-4 backdrop-blur-2xl backdrop-saturate-150" onSubmit={handleSubmit}>
             {(error || localError) && (
-              <p className="mb-3 rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
+              <p className="ob-danger mb-3 rounded-2xl px-3 py-2 text-sm leading-5">
                 {localError ?? error}
               </p>
             )}
             <textarea
-              className="min-h-24 w-full resize-none rounded-[24px] border border-black/10 bg-white px-4 py-3 text-sm leading-5 text-[#1d1d1f] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] outline-none transition focus:border-[#007aff]/50 focus:ring-4 focus:ring-[#007aff]/10"
+              className="ob-input min-h-24 w-full resize-none rounded-[24px] px-4 py-3 text-sm leading-5 outline-none transition"
               value={draft}
               placeholder="Prep the session: goals, repo context, files to inspect, constraints, and acceptance criteria..."
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={handleComposerKeyDown}
             />
             <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-xs text-[#86868b]">Enter sends. Shift Enter adds a line.</p>
+              <p className="ob-muted text-xs">Enter sends. Shift Enter adds a line.</p>
               <Button
-                className="rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.30)] transition hover:bg-[#0a84ff] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+                className="ob-primary rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
                 type="submit"
                 disabled={status === 'working' || !draft.trim()}
               >
@@ -1006,23 +1104,23 @@ function CreatePrepSessionForm({
   return (
     <form className="grid gap-4 p-5" onSubmit={handleSubmit}>
       {!connected ? (
-        <p className="rounded-2xl border border-[#ffcc00]/20 bg-[#ffcc00]/10 px-3 py-2 text-sm leading-5 text-[#6e5b00]">
+        <p className="ob-warning rounded-2xl px-3 py-2 text-sm leading-5">
           Connect to OpenCode before creating a prep session.
         </p>
       ) : null}
-      <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+      <label className="ob-text grid gap-1.5 text-sm font-medium">
         Session title
         <input
-          className="rounded-2xl border border-white/70 bg-white/64 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+          className="ob-input rounded-2xl px-3 py-2.5 text-sm font-normal outline-none backdrop-blur-xl transition"
           value={title}
           placeholder="Plan settings refactor"
           onChange={(event) => setTitle(event.target.value)}
         />
       </label>
-      <label className="grid gap-1.5 text-sm font-medium text-[#1d1d1f]">
+      <label className="ob-text grid gap-1.5 text-sm font-medium">
         Project directory
         {canPickProjects ? (
-          <div className="grid max-h-[300px] gap-2 overflow-y-auto rounded-[24px] border border-white/70 bg-white/45 p-2 shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+          <div className="ob-card grid max-h-[300px] gap-2 overflow-y-auto rounded-[24px] p-2 backdrop-blur-xl">
             {sortedProjects.map((project) => {
               const selected = projectDirectory === project.worktree
 
@@ -1030,16 +1128,16 @@ function CreatePrepSessionForm({
                 <button
                   key={project.id}
                   className={classNames(
-                    'rounded-[18px] border px-3 py-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]',
+                    'rounded-[18px] px-3 py-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2',
                     selected
-                      ? 'border-[#007aff]/40 bg-[#eaf4ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]'
-                      : 'border-white/60 bg-white/58 hover:bg-white/82',
+                      ? 'ob-card-active'
+                      : 'ob-card',
                   )}
                   type="button"
                   onClick={() => setProjectDirectory(project.worktree)}
                 >
-                  <span className="block truncate text-sm font-semibold text-[#1d1d1f]">{projectLabel(project)}</span>
-                  <span className="mt-1 block break-all text-xs font-normal leading-4 text-[#6e6e73]">
+                  <span className="ob-text block truncate text-sm font-semibold">{projectLabel(project)}</span>
+                  <span className="ob-muted mt-1 block break-all text-xs font-normal leading-4">
                     {project.worktree}
                   </span>
                 </button>
@@ -1048,7 +1146,7 @@ function CreatePrepSessionForm({
           </div>
         ) : (
           <input
-            className="rounded-2xl border border-white/70 bg-white/64 px-3 py-2.5 text-sm font-normal text-[#1d1d1f] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)] outline-none backdrop-blur-xl transition focus:border-[#007aff]/50 focus:bg-white focus:ring-4 focus:ring-[#007aff]/10"
+            className="ob-input rounded-2xl px-3 py-2.5 text-sm font-normal outline-none backdrop-blur-xl transition"
             value={projectDirectory}
             placeholder="/Users/mininic/openboard"
             required
@@ -1057,11 +1155,11 @@ function CreatePrepSessionForm({
         )}
       </label>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-[#86868b]">
+        <p className="ob-muted text-xs">
           {projectError ?? (sortedProjects.length > 0 ? `${sortedProjects.length} OpenCode projects loaded.` : 'No OpenCode projects found yet.')}
         </p>
         <Button
-          className="rounded-full border border-white/70 bg-white/65 px-3 py-1.5 text-xs font-semibold text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-xl transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+          className="ob-secondary-button rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2"
           type="button"
           onClick={() => {
             setProjectDirectory('')
@@ -1072,12 +1170,12 @@ function CreatePrepSessionForm({
         </Button>
       </div>
       {error ? (
-        <p className="rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-sm leading-5 text-[#b42318]">
+        <p className="ob-danger rounded-2xl px-3 py-2 text-sm leading-5">
           {error}
         </p>
       ) : null}
       <Button
-        className="justify-self-end rounded-full bg-[#007aff] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_12px_26px_rgba(0,122,255,0.30)] transition hover:bg-[#0a84ff] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+        className="ob-primary justify-self-end rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2"
         type="submit"
         disabled={!connected || status === 'creating' || !projectDirectory.trim()}
       >
@@ -1089,9 +1187,9 @@ function CreatePrepSessionForm({
 
 function OptionDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-black/[0.035] px-3 py-2">
-      <p className="text-[0.65rem] font-medium uppercase tracking-[0.12em] text-[#86868b]">{label}</p>
-      <p className="mt-1 break-all text-xs font-medium leading-4 text-[#1d1d1f]">{value}</p>
+    <div className="ob-empty rounded-2xl px-3 py-2">
+      <p className="ob-muted text-[0.65rem] font-medium uppercase tracking-[0.12em]">{label}</p>
+      <p className="ob-text mt-1 break-all text-xs font-medium leading-4">{value}</p>
     </div>
   )
 }
@@ -1112,11 +1210,11 @@ function AreaAgentSelect({
   const agentOptions = normalizedAgentOptions(agents)
 
   return (
-    <label className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/58 px-2.5 py-1.5 text-xs font-medium text-[#6e6e73] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+      <label className="ob-pill inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium backdrop-blur-xl">
       <span className="sr-only">Agent for {areaLabel}</span>
       <span aria-hidden="true">Agent</span>
       <select
-        className="max-w-28 bg-transparent text-xs font-semibold text-[#007aff] outline-none"
+        className="ob-select max-w-28 bg-transparent text-xs font-semibold outline-none"
         value={value}
         title={error ?? `Agent for ${areaLabel}`}
         onChange={(event) => onChange(event.target.value)}
@@ -1134,9 +1232,9 @@ function AreaAgentSelect({
 function MessageList({ messages, busy }: { messages: OpenCodeMessage[]; busy: boolean }) {
   if (messages.length === 0) {
     return (
-      <div className="mx-auto mt-2 max-w-[360px] rounded-[24px] bg-black/[0.045] px-4 py-3 text-center">
-        <p className="text-sm font-semibold text-[#1d1d1f]">Prep before delegating</p>
-        <p className="mt-1 text-sm leading-5 text-[#6e6e73]">
+      <div className="ob-empty mx-auto mt-2 max-w-[360px] rounded-[24px] px-4 py-3 text-center">
+        <p className="ob-text text-sm font-semibold">Prep before delegating</p>
+        <p className="ob-muted mt-1 text-sm leading-5">
           Clarify scope, gather constraints, and identify the project context here. Once the thread is ready,
           delegate concrete work to the agent cards below.
         </p>
@@ -1163,8 +1261,8 @@ function MessageBubble({ message }: { message: OpenCodeMessage }) {
       <article
         className={classNames(
           user
-            ? 'max-w-[78%] rounded-[22px] rounded-br-md bg-[#007aff] px-4 py-2.5 text-white shadow-[0_8px_20px_rgba(0,122,255,0.22)]'
-            : 'w-full px-1 py-1 text-[#1d1d1f]',
+            ? 'ob-user-bubble max-w-[78%] rounded-[22px] rounded-br-md px-4 py-2.5'
+            : 'ob-text w-full px-1 py-1',
         )}
       >
         <div className={classNames('mb-1.5 flex items-center justify-between gap-3', user && 'hidden')}>
@@ -1172,33 +1270,33 @@ function MessageBubble({ message }: { message: OpenCodeMessage }) {
             <span
               className={classNames(
                 'grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold',
-                user ? 'bg-white/20 text-white' : 'bg-[#1d1d1f] text-white',
+                user ? 'bg-white/20 text-white' : 'ob-agent-avatar',
               )}
             >
               {user ? 'You' : 'OC'}
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">
+              <p className="ob-muted text-xs font-medium uppercase tracking-[0.12em]">
                 {user ? 'You' : message.info.agent || 'OpenCode'}
               </p>
               {!user && message.info.model ? (
-                <p className="truncate text-xs text-[#86868b]">
+                <p className="ob-muted truncate text-xs">
                   {message.info.model.providerID}/{message.info.model.modelID}
                 </p>
               ) : null}
             </div>
           </div>
           {message.info.time?.created ? (
-            <p className="shrink-0 text-xs text-[#86868b]">{formatRelativeTime(message.info.time.created)}</p>
+            <p className="ob-muted shrink-0 text-xs">{formatRelativeTime(message.info.time.created)}</p>
           ) : null}
         </div>
 
-        <div className={classNames('grid gap-2 text-sm leading-5', user ? 'text-white' : 'text-[#1d1d1f]')}>
+        <div className={classNames('grid gap-2 text-sm leading-5', user ? 'text-white' : 'ob-text')}>
           {errorText ? <MessageError text={errorText} /> : null}
           {message.parts.length > 0 ? (
             message.parts.map((part) => <MessagePart key={part.id} part={part} />)
           ) : !errorText ? (
-            <p className={classNames(user ? 'text-white/70' : 'text-[#86868b]')}>Message metadata received.</p>
+            <p className={classNames(user ? 'text-white/70' : 'ob-muted')}>Message metadata received.</p>
           ) : null}
         </div>
         {user && message.info.time?.created ? (
@@ -1216,29 +1314,29 @@ function MessagePart({ part }: { part: OpenCodeMessagePart }) {
 
   if (part.type === 'file') {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 px-3 py-2 text-[#1d1d1f]">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">File</p>
-        <p className="mt-1 truncate text-sm font-medium text-[#1d1d1f]">{part.filename ?? part.url ?? 'Attachment'}</p>
+      <div className="ob-card rounded-2xl px-3 py-2">
+        <p className="ob-muted text-xs font-medium uppercase tracking-[0.12em]">File</p>
+        <p className="ob-text mt-1 truncate text-sm font-medium">{part.filename ?? part.url ?? 'Attachment'}</p>
       </div>
     )
   }
 
   if (part.type === 'tool') {
     return (
-      <div className="rounded-2xl border border-black/5 bg-white/70 px-3 py-2 text-[#1d1d1f]">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#86868b]">Tool</p>
-        <p className="mt-1 text-sm font-medium text-[#1d1d1f]">{part.tool ?? part.state?.title ?? 'Tool call'}</p>
-        {part.state?.status ? <p className="mt-1 text-xs text-[#86868b]">{part.state.status}</p> : null}
+      <div className="ob-card rounded-2xl px-3 py-2">
+        <p className="ob-muted text-xs font-medium uppercase tracking-[0.12em]">Tool</p>
+        <p className="ob-text mt-1 text-sm font-medium">{part.tool ?? part.state?.title ?? 'Tool call'}</p>
+        {part.state?.status ? <p className="ob-muted mt-1 text-xs">{part.state.status}</p> : null}
       </div>
     )
   }
 
-  return <p className="rounded-2xl bg-black/[0.035] px-3 py-2 text-[#6e6e73]">{part.type}</p>
+  return <p className="ob-empty rounded-2xl px-3 py-2">{part.type}</p>
 }
 
 function MessageError({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-[#ff3b30]/15 bg-[#ff3b30]/5 px-3 py-2 text-[#b42318]">
+    <div className="ob-danger rounded-2xl px-3 py-2">
       <p className="text-xs font-semibold uppercase tracking-[0.12em]">OpenCode error</p>
       <p className="mt-1 whitespace-pre-wrap">{text}</p>
     </div>
@@ -1248,8 +1346,8 @@ function MessageError({ text }: { text: string }) {
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="inline-flex items-center gap-2 rounded-full bg-black/[0.045] px-3 py-2 text-sm text-[#6e6e73]">
-        <span className="size-2 animate-pulse rounded-full bg-[#007aff]" />
+      <div className="ob-empty inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm">
+        <span className="ob-dot size-2 animate-pulse rounded-full" />
         Waiting for OpenCode
       </div>
     </div>
@@ -1299,22 +1397,22 @@ function KanbanColumn({
   return (
     <article
       className={classNames(
-        'min-h-[560px] rounded-[32px] border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_18px_46px_rgba(0,64,128,0.08)] backdrop-blur-2xl transition-colors',
-        isOver ? 'border-[#007aff]/45 bg-[#eaf4ff]/78' : 'border-white/65 bg-white/42',
+        'ob-column min-h-[560px] rounded-[32px] p-3 backdrop-blur-2xl transition-colors',
+        isOver && 'ob-column-over',
       )}
       ref={setNodeRef}
     >
       <header className="mb-3 flex items-start justify-between gap-4 px-1 py-1">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-[#1d1d1f]">
+            <h2 className="ob-text text-[0.95rem] font-semibold tracking-[-0.01em]">
               {column.title}
             </h2>
-            <span className="grid size-6 place-items-center rounded-full border border-white/70 bg-white/58 text-[0.7rem] font-medium text-[#007aff] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-xl">
+            <span className="ob-pill ob-accent grid size-6 place-items-center rounded-full text-[0.7rem] font-medium backdrop-blur-xl">
               {cards.length}
             </span>
           </div>
-          <p className="mt-0.5 text-sm text-[#86868b]">{column.description}</p>
+          <p className="ob-muted mt-0.5 text-sm">{column.description}</p>
         </div>
         <AreaAgentSelect
           agents={agents}
@@ -1330,7 +1428,7 @@ function KanbanColumn({
             <SortableTaskCard key={card.id} card={card} />
           ))}
           {cards.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-white/70 bg-white/28 px-4 py-6 text-center text-sm leading-5 text-[#86868b] backdrop-blur-xl">
+            <div className="ob-dropzone rounded-[24px] px-4 py-6 text-center text-sm leading-5 backdrop-blur-xl">
               Drop work here when it is ready for {displayAgentName(selectedAgent)}.
             </div>
           ) : null}
@@ -1373,19 +1471,19 @@ function TaskCard({
   return (
     <div
       className={classNames(
-        'group rounded-[24px] border border-white/72 bg-white/68 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_14px_34px_rgba(0,64,128,0.10)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/84 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_20px_44px_rgba(0,64,128,0.14)]',
-        overlay && 'w-[290px] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_70px_rgba(0,64,128,0.20)]',
+        'ob-card group rounded-[24px] p-3 backdrop-blur-xl transition hover:-translate-y-0.5',
+        overlay && 'w-[290px]',
         hidden && 'opacity-30',
       )}
       ref={refCallback}
       style={style}
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="rounded-full border border-[#007aff]/12 bg-[#eaf4ff]/72 px-2.5 py-1 text-xs font-medium text-[#0066d6] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+        <span className="ob-pill ob-accent rounded-full px-2.5 py-1 text-xs font-medium">
           {card.agent}
         </span>
         <Button
-          className="grid size-8 cursor-grab place-items-center rounded-full text-[#86868b] transition hover:bg-black/[0.04] active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#007aff]"
+          className="ob-icon-button grid size-8 cursor-grab place-items-center rounded-full transition active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2"
           type="button"
           aria-label={`Move ${card.title}`}
           {...dragHandleProps}
@@ -1396,10 +1494,10 @@ function TaskCard({
           </span>
         </Button>
       </div>
-      <h3 className="text-[0.96rem] font-semibold leading-snug tracking-[-0.01em] text-[#1d1d1f]">
+      <h3 className="ob-text text-[0.96rem] font-semibold leading-snug tracking-[-0.01em]">
         {card.title}
       </h3>
-      <p className="mt-2 text-sm leading-5 text-[#6e6e73]">{card.prompt}</p>
+      <p className="ob-muted mt-2 text-sm leading-5">{card.prompt}</p>
     </div>
   )
 }
@@ -1440,6 +1538,10 @@ function getConnectionDotColor(status: ConnectionState['status']) {
   return 'bg-[#86868b]'
 }
 
+function isGitHubPagesBuild() {
+  return window.location.hostname === 'ntoporcov.github.io' && window.location.pathname.startsWith('/openboard')
+}
+
 function loadAgentSelections() {
   const storedValue = localStorage.getItem(agentSelectionsStorageKey)
 
@@ -1456,6 +1558,32 @@ function loadAgentSelections() {
 
 function saveAgentSelections(selections: AreaAgentSelections) {
   localStorage.setItem(agentSelectionsStorageKey, JSON.stringify(selections))
+}
+
+function loadAppearanceSettings() {
+  const storedValue = localStorage.getItem(appearanceStorageKey)
+
+  if (!storedValue) {
+    return defaultAppearanceSettings
+  }
+
+  try {
+    const parsedValue = JSON.parse(storedValue) as Partial<AppearanceSettings>
+    const theme = parsedValue.theme === 'opencode' || parsedValue.theme === 'cupertino'
+      ? parsedValue.theme
+      : defaultAppearanceSettings.theme
+    const mode = parsedValue.mode === 'light' || parsedValue.mode === 'dark' || parsedValue.mode === 'system'
+      ? parsedValue.mode
+      : defaultAppearanceSettings.mode
+
+    return { theme, mode }
+  } catch {
+    return defaultAppearanceSettings
+  }
+}
+
+function saveAppearanceSettings(settings: AppearanceSettings) {
+  localStorage.setItem(appearanceStorageKey, JSON.stringify(settings))
 }
 
 function normalizedAgentOptions(agents: OpenCodeAgent[]) {
