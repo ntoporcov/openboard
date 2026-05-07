@@ -33,6 +33,7 @@ import {
   createOpenCodeId,
   createOpenCodeSession,
   createOpenCodeTextPart,
+  clearOpenCodeServerConfig,
   deleteOpenCodeSession,
   defaultOpenCodeServerConfig,
   listOpenCodeAgents,
@@ -130,6 +131,7 @@ function App() {
   const [cards, setCards] = useState(initialCards)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [connectionModalOpen, setConnectionModalOpen] = useState(() => !loadOpenCodeServerConfig())
+  const [pluginModalOpen, setPluginModalOpen] = useState(false)
   const [prepSessions, setPrepSessions] = useState<OpenBoardPrepSession[]>([])
   const [sidebarState, setSidebarState] = useState<SidebarState>('closed')
   const [activePrepSessionId, setActivePrepSessionId] = useState<string | null>(null)
@@ -398,6 +400,20 @@ function App() {
     setConnectionModalOpen(false)
   }
 
+  function handleDisconnect() {
+    clearOpenCodeServerConfig()
+    setConnection({
+      config: null,
+      health: null,
+      status: 'idle',
+      error: null,
+    })
+    setProjects([])
+    setAgents([])
+    setProjectError(null)
+    setAgentError(null)
+  }
+
   function handleOpenPrepSession(session: OpenBoardPrepSession) {
     setActivePrepSessionId(session.id)
     setSidebarState('open')
@@ -508,7 +524,6 @@ function App() {
   }
 
   const connectionLabel = getConnectionLabel(connection)
-  const showGitHubPagesSetup = isGitHubPagesBuild()
 
   return (
     <main className="openboard-app relative min-h-svh min-w-max" data-mode={appearance.mode} data-theme={appearance.theme}>
@@ -538,28 +553,36 @@ function App() {
 
             <div className="flex flex-wrap items-center gap-2">
               <AppearanceControls appearance={appearance} onChange={handleAppearanceChange} />
-              <span className="ob-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm backdrop-blur-xl">
-                <span className={classNames('size-2 rounded-full', getConnectionDotColor(connection.status))} />
-                {connectionLabel}
+              <span className="ob-pill inline-flex items-center gap-2 rounded-full px-2 py-1.5 text-sm backdrop-blur-xl">
+                <button
+                  className="inline-flex items-center gap-2 px-1 outline-none"
+                  type="button"
+                  onClick={() => setConnectionModalOpen(true)}
+                >
+                  <span className={classNames('size-2 rounded-full', getConnectionDotColor(connection.status))} />
+                  {connectionLabel}
+                </button>
+                {connection.config ? (
+                  <Button
+                    className="ob-icon-button grid size-5 place-items-center rounded-full text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2"
+                    type="button"
+                    aria-label="Disconnect OpenCode"
+                    title="Disconnect OpenCode"
+                    onClick={handleDisconnect}
+                  >
+                    ×
+                  </Button>
+                ) : null}
               </span>
               <Button
                 className="ob-secondary-button rounded-full px-4 py-2 text-sm font-medium backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2"
                 type="button"
-                onClick={() => setConnectionModalOpen(true)}
+                onClick={() => setPluginModalOpen(true)}
               >
-                Connect
-              </Button>
-              <Button
-                className="ob-primary rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2"
-                type="button"
-                onClick={() => setSidebarState('new')}
-              >
-                Create prep
+                Plugin
               </Button>
             </div>
           </header>
-
-          {showGitHubPagesSetup ? <GitHubPagesSetupRecipe /> : null}
 
           <PrepLane
             prepSessions={prepSessions}
@@ -608,6 +631,8 @@ function App() {
         />
       ) : null}
 
+      {pluginModalOpen ? <PluginModal onClose={() => setPluginModalOpen(false)} /> : null}
+
       {sidebarState !== 'closed' ? (
         <PrepSidebar
           mode={sidebarState}
@@ -628,27 +653,39 @@ function App() {
   )
 }
 
-function GitHubPagesSetupRecipe() {
+function PluginModal({ onClose }: { onClose: () => void }) {
   return (
-    <section className="ob-surface mb-4 rounded-[28px] p-4 backdrop-blur-2xl">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-3xl">
-          <p className="ob-accent text-xs font-semibold uppercase tracking-[0.16em]">Recommended setup</p>
-          <h2 className="ob-text mt-1 text-[1rem] font-semibold tracking-[-0.02em]">
-            Install the OpenBoard plugin to get the board agents in OpenCode.
-          </h2>
-          <p className="ob-muted mt-1 text-sm leading-5">
-            The hosted app can connect to any OpenCode server, but the plugin adds the Prepper, Planner, Builder,
-            Reviewer, and Tester agents plus board handoff tools.
-          </p>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/20 px-4 py-6 backdrop-blur-sm">
+      <div className="ob-surface w-full max-w-[640px] rounded-[34px] p-5 backdrop-blur-2xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="ob-accent text-xs font-semibold uppercase tracking-[0.16em]">Recommended setup</p>
+            <h2 className="ob-text mt-1 text-lg font-semibold tracking-[-0.02em]">Install the OpenBoard plugin</h2>
+            <p className="ob-muted mt-1 text-sm leading-5">
+              The plugin adds the Prepper, Planner, Builder, Reviewer, and Tester agents plus board handoff tools.
+            </p>
+          </div>
+          <Button
+            className="ob-icon-button grid size-8 place-items-center rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2"
+            type="button"
+            aria-label="Close plugin instructions"
+            onClick={onClose}
+          >
+            ×
+          </Button>
         </div>
-        <div className="grid gap-2 text-sm lg:min-w-[420px]">
+
+        <div className="grid gap-3 text-sm">
+          <p className="ob-muted leading-5">
+            Add the GitHub Packages registry for the package scope, then add the plugin to your OpenCode config.
+            If you use the hosted app, start OpenCode with CORS enabled for GitHub Pages.
+          </p>
           <CodePill value="@ntoporcov:registry=https://npm.pkg.github.com" />
           <CodePill value={'"plugin": ["@ntoporcov/openboard-opencode-plugin"]'} />
           <CodePill value="opencode serve --cors https://ntoporcov.github.io" />
         </div>
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -1536,10 +1573,6 @@ function getConnectionDotColor(status: ConnectionState['status']) {
   }
 
   return 'bg-[#86868b]'
-}
-
-function isGitHubPagesBuild() {
-  return window.location.hostname === 'ntoporcov.github.io' && window.location.pathname.startsWith('/openboard')
 }
 
 function loadAgentSelections() {

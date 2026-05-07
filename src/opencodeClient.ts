@@ -254,6 +254,10 @@ export function saveOpenCodeServerConfig(config: OpenCodeServerConfig) {
   return normalizedConfig
 }
 
+export function clearOpenCodeServerConfig() {
+  localStorage.removeItem(connectionStorageKey)
+}
+
 export async function validateOpenCodeConnection(config: OpenCodeServerConfig) {
   const baseUrl = normalizeBaseUrl(config.baseUrl)
 

@@ -351,6 +351,180 @@
   background: var(--ob-bg);
 }
 
+.openboard-app[data-theme="opencode"] {
+  --ob-bg: #ffffff;
+  --ob-text: #000000;
+  --ob-muted: #555555;
+  --ob-muted-strong: #333333;
+  --ob-accent: #000000;
+  --ob-accent-strong: #000000;
+  --ob-primary: #ffffff;
+  --ob-primary-hover: #f2f2f2;
+  --ob-primary-text: #000000;
+  --ob-surface: #ffffff;
+  --ob-surface-strong: #ffffff;
+  --ob-surface-soft: #ffffff;
+  --ob-border: #000000;
+  --ob-border-strong: #000000;
+  --ob-empty: #ffffff;
+  --ob-input: #ffffff;
+  --ob-input-border: #000000;
+  --ob-danger-bg: #ffffff;
+  --ob-danger-border: #d1383d;
+  --ob-danger-text: #d1383d;
+  --ob-warning-bg: #ffffff;
+  --ob-warning-border: #d68c27;
+  --ob-warning-text: #8a5919;
+  --ob-shadow: none;
+  --ob-card-shadow: none;
+  --ob-backdrop: #ffffff;
+  --ob-glow: transparent;
+  --ob-logo: #ffffff;
+}
+
+.openboard-app[data-theme="opencode"][data-mode="dark"],
+.openboard-app[data-theme="opencode"][data-mode="system"] {
+  --ob-bg: #0a0a0a;
+  --ob-text: #eeeeee;
+  --ob-muted: #9a9a9a;
+  --ob-muted-strong: #eeeeee;
+  --ob-accent: #eeeeee;
+  --ob-accent-strong: #eeeeee;
+  --ob-primary: #ffffff;
+  --ob-primary-hover: #e7e7e7;
+  --ob-primary-text: #000000;
+  --ob-surface: #0a0a0a;
+  --ob-surface-strong: #0a0a0a;
+  --ob-surface-soft: #0a0a0a;
+  --ob-border: #eeeeee;
+  --ob-border-strong: #eeeeee;
+  --ob-empty: #0a0a0a;
+  --ob-input: #0a0a0a;
+  --ob-input-border: #eeeeee;
+  --ob-backdrop: #0a0a0a;
+  --ob-glow: transparent;
+  --ob-logo: #0a0a0a;
+}
+
+@media (prefers-color-scheme: light) {
+  .openboard-app[data-theme="opencode"][data-mode="system"] {
+    --ob-bg: #ffffff;
+    --ob-text: #000000;
+    --ob-muted: #555555;
+    --ob-muted-strong: #333333;
+    --ob-accent: #000000;
+    --ob-accent-strong: #000000;
+    --ob-primary: #ffffff;
+    --ob-primary-hover: #f2f2f2;
+    --ob-primary-text: #000000;
+    --ob-surface: #ffffff;
+    --ob-surface-strong: #ffffff;
+    --ob-surface-soft: #ffffff;
+    --ob-border: #000000;
+    --ob-border-strong: #000000;
+    --ob-empty: #ffffff;
+    --ob-input: #ffffff;
+    --ob-input-border: #000000;
+    --ob-backdrop: #ffffff;
+    --ob-glow: transparent;
+    --ob-logo: #ffffff;
+  }
+}
+
+.openboard-app[data-theme="opencode"] .ob-logo,
+.openboard-app[data-theme="opencode"] .ob-primary,
+.openboard-app[data-theme="opencode"] .ob-user-bubble,
+.openboard-app[data-theme="opencode"] .ob-input,
+.openboard-app[data-theme="opencode"] .ob-card,
+.openboard-app[data-theme="opencode"] .ob-pill,
+.openboard-app[data-theme="opencode"] .ob-menu,
+.openboard-app[data-theme="opencode"] .ob-surface,
+.openboard-app[data-theme="opencode"] .ob-column,
+.openboard-app[data-theme="opencode"] .ob-sidebar,
+.openboard-app[data-theme="opencode"] .ob-empty,
+.openboard-app[data-theme="opencode"] .ob-dropzone {
+  box-shadow: none;
+}
+
+.openboard-app[data-theme="opencode"] .ob-logo,
+.openboard-app[data-theme="opencode"] .ob-primary,
+.openboard-app[data-theme="opencode"] .ob-secondary-button,
+.openboard-app[data-theme="opencode"] .ob-card,
+.openboard-app[data-theme="opencode"] .ob-pill,
+.openboard-app[data-theme="opencode"] .ob-menu,
+.openboard-app[data-theme="opencode"] .ob-surface,
+.openboard-app[data-theme="opencode"] .ob-column,
+.openboard-app[data-theme="opencode"] .ob-sidebar,
+.openboard-app[data-theme="opencode"] .ob-input,
+.openboard-app[data-theme="opencode"] .ob-empty,
+.openboard-app[data-theme="opencode"] .ob-dropzone,
+.openboard-app[data-theme="opencode"] [class*="rounded-"] {
+  border-radius: 0;
+}
+
+.openboard-app[data-theme="opencode"] .ob-logo,
+.openboard-app[data-theme="opencode"] .ob-primary,
+.openboard-app[data-theme="opencode"] .ob-secondary-button,
+.openboard-app[data-theme="opencode"] .ob-icon-button,
+.openboard-app[data-theme="opencode"] .ob-card,
+.openboard-app[data-theme="opencode"] .ob-pill,
+.openboard-app[data-theme="opencode"] .ob-menu,
+.openboard-app[data-theme="opencode"] .ob-surface,
+.openboard-app[data-theme="opencode"] .ob-column,
+.openboard-app[data-theme="opencode"] .ob-sidebar,
+.openboard-app[data-theme="opencode"] .ob-input,
+.openboard-app[data-theme="opencode"] .ob-empty,
+.openboard-app[data-theme="opencode"] .ob-dropzone {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--ob-border);
+}
+
+.openboard-app[data-theme="opencode"] .ob-primary {
+  font-weight: 700;
+}
+
+.openboard-app[data-theme="opencode"] .ob-primary:hover,
+.openboard-app[data-theme="opencode"] .ob-secondary-button:hover,
+.openboard-app[data-theme="opencode"] .ob-icon-button:hover,
+.openboard-app[data-theme="opencode"] .ob-card:hover {
+  background: var(--ob-primary-hover);
+}
+
+.openboard-app[data-theme="opencode"] .ob-card-active,
+.openboard-app[data-theme="opencode"] .ob-column-over {
+  background: var(--ob-surface-strong);
+  outline: 2px solid var(--ob-border-strong);
+  outline-offset: -2px;
+}
+
+.openboard-app[data-theme="opencode"] .ob-glow {
+  display: none;
+}
+
+.openboard-app[data-theme="opencode"] > .relative,
+.openboard-app[data-theme="opencode"] [aria-label="Kanban board"],
+.openboard-app[data-theme="opencode"] [aria-label="Prep sessions"] {
+  gap: 0;
+}
+
+.openboard-app[data-theme="opencode"] .ob-surface,
+.openboard-app[data-theme="opencode"] .ob-column,
+.openboard-app[data-theme="opencode"] .ob-sidebar,
+.openboard-app[data-theme="opencode"] .ob-card,
+.openboard-app[data-theme="opencode"] .ob-dropzone {
+  backdrop-filter: none;
+}
+
+.openboard-app[data-theme="opencode"] header.ob-surface,
+.openboard-app[data-theme="opencode"] section.ob-surface {
+  margin-bottom: 0;
+}
+
+.openboard-app[data-theme="opencode"] [aria-label="Kanban board"] {
+  padding-top: 0;
+}
+
 body {
   min-width: 320px;
   min-height: 100svh;
