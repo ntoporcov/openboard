@@ -28,6 +28,7 @@ import {
   type FormEvent,
   type HTMLAttributes,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react'
 import {
   createOpenCodeId,
@@ -340,7 +341,7 @@ function App() {
             sessionID: prepSession.opencodeSessionId,
             directory: prepSession.projectDirectory,
           })
-            .then(setMessages)
+            .then((nextMessages) => setMessages((currentMessages) => mergeMessages(currentMessages, nextMessages)))
             .catch((error: unknown) => {
               setSessionError(error instanceof Error ? error.message : 'Unable to refresh OpenCode messages.')
             })
@@ -1427,7 +1428,7 @@ function MessageBubble({ message }: { message: OpenCodeMessage }) {
 
 function MessagePart({ part }: { part: OpenCodeMessagePart }) {
   if (part.type === 'text' && part.text) {
-    return <p className="whitespace-pre-wrap">{part.text}</p>
+    return <MarkdownText text={part.text} />
   }
 
   if (part.type === 'file') {
@@ -1454,6 +1455,128 @@ function MessagePart({ part }: { part: OpenCodeMessagePart }) {
 
 function isVisibleMessagePart(part: OpenCodeMessagePart) {
   return part.type !== 'step-start' && part.type !== 'step-finish'
+}
+
+function MarkdownText({ text }: { text: string }) {
+  const lines = text.split('\n')
+  const blocks: ReactNode[] = []
+  let listItems: string[] = []
+  let paragraphLines: string[] = []
+  let codeLines: string[] = []
+  let inCodeBlock = false
+
+  function flushParagraph() {
+    if (paragraphLines.length === 0) {
+      return
+    }
+
+    blocks.push(
+      <p key={`p-${blocks.length}`} className="whitespace-pre-wrap">
+        {renderInlineMarkdown(paragraphLines.join('\n'))}
+      </p>,
+    )
+    paragraphLines = []
+  }
+
+  function flushList() {
+    if (listItems.length === 0) {
+      return
+    }
+
+    blocks.push(
+      <ul key={`ul-${blocks.length}`} className="grid list-disc gap-1 pl-5">
+        {listItems.map((item, index) => (
+          <li key={`${index}-${item}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ul>,
+    )
+    listItems = []
+  }
+
+  lines.forEach((line) => {
+    if (line.trim().startsWith('```')) {
+      if (inCodeBlock) {
+        blocks.push(
+          <pre key={`pre-${blocks.length}`} className="ob-card overflow-x-auto rounded-2xl px-3 py-2 text-xs leading-5">
+            <code>{codeLines.join('\n')}</code>
+          </pre>,
+        )
+        codeLines = []
+      } else {
+        flushParagraph()
+        flushList()
+      }
+
+      inCodeBlock = !inCodeBlock
+      return
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line)
+      return
+    }
+
+    const heading = line.match(/^(#{1,3})\s+(.+)$/)
+    if (heading) {
+      flushParagraph()
+      flushList()
+      blocks.push(
+        <p key={`h-${blocks.length}`} className="font-semibold tracking-[-0.01em]">
+          {renderInlineMarkdown(heading[2])}
+        </p>,
+      )
+      return
+    }
+
+    const listItem = line.match(/^\s*[-*]\s+(.+)$/)
+    if (listItem) {
+      flushParagraph()
+      listItems.push(listItem[1])
+      return
+    }
+
+    if (!line.trim()) {
+      flushParagraph()
+      flushList()
+      return
+    }
+
+    flushList()
+    paragraphLines.push(line)
+  })
+
+  flushParagraph()
+  flushList()
+
+  if (inCodeBlock && codeLines.length > 0) {
+    blocks.push(
+      <pre key={`pre-${blocks.length}`} className="ob-card overflow-x-auto rounded-2xl px-3 py-2 text-xs leading-5">
+        <code>{codeLines.join('\n')}</code>
+      </pre>,
+    )
+  }
+
+  return <div className="grid gap-2">{blocks}</div>
+}
+
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean)
+
+  return parts.map((part, index) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={`${part}-${index}`} className="ob-empty rounded-md px-1 py-0.5 font-mono text-[0.82em]">
+          {part.slice(1, -1)}
+        </code>
+      )
+    }
+
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>
+    }
+
+    return <span key={`${part}-${index}`}>{part}</span>
+  })
 }
 
 function MessageError({ text }: { text: string }) {
