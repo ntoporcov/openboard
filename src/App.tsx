@@ -95,6 +95,14 @@ const defaultAgentSelections: AreaAgentSelections = {
   test: 'openboard-tester',
 }
 
+const fallbackAgentSelections: AreaAgentSelections = {
+  prep: 'plan',
+  plan: 'plan',
+  build: 'build',
+  review: 'plan',
+  test: 'plan',
+}
+
 const agentSelectionsStorageKey = 'openboard.agentSelections.v1'
 
 type ConnectionState = {
@@ -509,7 +517,7 @@ function App() {
         sessionID: activePrepSession.opencodeSessionId,
         directory: activePrepSession.projectDirectory,
         text,
-        agent: selectedAgentName(agentSelections.prep, agents),
+        agent: selectedAgentName('prep', agentSelections.prep, agents),
         messageID,
         part,
       })
@@ -623,6 +631,7 @@ function App() {
                 cards={cards.filter((card) => card.status === column.id)}
                 agents={agents}
                 selectedAgent={agentSelections[column.id]}
+                fallbackAgent={fallbackAgentSelections[column.id]}
                 onAgentSelected={(agentName) => handleAgentSelected(column.id, agentName)}
               />
             ))}
@@ -898,6 +907,7 @@ function PrepLane({
             areaLabel="Prep"
             error={agentError}
             value={selectedAgent}
+            fallbackValue={fallbackAgentSelections.prep}
             onChange={onAgentSelected}
           />
           <Button
@@ -1246,18 +1256,23 @@ function AreaAgentSelect({
   areaLabel,
   error,
   value,
+  fallbackValue,
   onChange,
 }: {
   agents: OpenCodeAgent[]
   areaLabel: string
   error?: string | null
   value: string
+  fallbackValue: string
   onChange: (agentName: string) => void
 }) {
-  const agentOptions = normalizedAgentOptions(agents)
+  const agentOptions = normalizedAgentOptions(agents, fallbackValue)
   const [open, setOpen] = useState(false)
-  const selectedAgent = agentOptions.find((agent) => agent.name === value) ?? agentOptions[0]
+  const selectedAgent = agentOptions.find((agent) => agent.name === value)
+    ?? agentOptions.find((agent) => agent.name === fallbackValue)
+    ?? agentOptions[0]
   const selectedLabel = selectedAgent ? displayAgentName(selectedAgent.name) : 'Agent'
+  const isFallback = selectedAgent?.name !== value
 
   return (
     <div
@@ -1273,11 +1288,12 @@ function AreaAgentSelect({
         type="button"
         aria-expanded={open}
         aria-haspopup="listbox"
-        title={error ?? `${areaLabel} agent: ${selectedLabel}`}
+        title={error ?? `${areaLabel} agent: ${selectedLabel}${isFallback ? ` (fallback for ${displayAgentName(value)})` : ''}`}
         onClick={() => setOpen((currentOpen) => !currentOpen)}
       >
         <span className="ob-muted shrink-0" aria-hidden="true">Agent</span>
         <span className="ob-accent min-w-0 truncate font-semibold">{selectedLabel}</span>
+        {isFallback ? <span className="ob-muted shrink-0 text-[0.65rem]">fallback</span> : null}
         <span className="ob-muted shrink-0 text-[0.65rem]" aria-hidden="true">▾</span>
       </Button>
 
@@ -1289,7 +1305,7 @@ function AreaAgentSelect({
         >
           {agentOptions.map((agent) => {
             const label = displayAgentName(agent.name)
-            const selected = agent.name === value
+            const selected = agent.name === selectedAgent?.name
 
             return (
               <button
@@ -1481,16 +1497,20 @@ function KanbanColumn({
   cards,
   agents,
   selectedAgent,
+  fallbackAgent,
   onAgentSelected,
 }: {
   column: Column
   cards: Card[]
   agents: OpenCodeAgent[]
   selectedAgent: string
+  fallbackAgent: string
   onAgentSelected: (agentName: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const cardIds = useMemo(() => cards.map((card) => card.id), [cards])
+  const activeAgent = selectedAgentName(column.id, selectedAgent, agents) ?? fallbackAgent
+  const usingFallbackAgent = activeAgent !== selectedAgent
 
   return (
     <article
@@ -1516,6 +1536,7 @@ function KanbanColumn({
           agents={agents}
           areaLabel={column.title}
           value={selectedAgent}
+          fallbackValue={fallbackAgent}
           onChange={onAgentSelected}
         />
       </header>
@@ -1527,7 +1548,13 @@ function KanbanColumn({
           ))}
           {cards.length === 0 ? (
             <div className="ob-dropzone rounded-[24px] px-4 py-6 text-center text-sm leading-5 backdrop-blur-xl">
-              Drop work here when it is ready for {displayAgentName(selectedAgent)}.
+              <p>Drop work here when it is ready for {displayAgentName(activeAgent)}.</p>
+              {usingFallbackAgent ? (
+                <p className="mt-2 text-xs">
+                  Install the OpenBoard plugin to use {displayAgentName(selectedAgent)}, or continue with the default
+                  OpenCode {displayAgentName(fallbackAgent)} agent.
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -1697,7 +1724,7 @@ function saveAppearanceSettings(settings: AppearanceSettings) {
   localStorage.setItem(appearanceStorageKey, JSON.stringify(settings))
 }
 
-function normalizedAgentOptions(agents: OpenCodeAgent[]) {
+function normalizedAgentOptions(agents: OpenCodeAgent[], fallbackAgentName?: string) {
   const map = new Map<string, OpenCodeAgent>()
 
   agents.forEach((agent) => map.set(agent.name, agent))
@@ -1706,19 +1733,29 @@ function normalizedAgentOptions(agents: OpenCodeAgent[]) {
       map.set(agentName, { name: agentName, mode: 'all' })
     }
   })
+  Object.values(fallbackAgentSelections).forEach((agentName) => {
+    if (!map.has(agentName)) {
+      map.set(agentName, { name: agentName, mode: 'all' })
+    }
+  })
+  if (fallbackAgentName && !map.has(fallbackAgentName)) {
+    map.set(fallbackAgentName, { name: fallbackAgentName, mode: 'all' })
+  }
 
   return Array.from(map.values()).sort((a, b) => displayAgentName(a.name).localeCompare(displayAgentName(b.name)))
 }
 
-function selectedAgentName(agentName: string, agents: OpenCodeAgent[]) {
+function selectedAgentName(area: BoardAreaId, agentName: string, agents: OpenCodeAgent[]) {
   const availableAgentNames = new Set(agents.map((agent) => agent.name))
 
   if (availableAgentNames.has(agentName)) {
     return agentName
   }
 
-  if (availableAgentNames.has('build')) {
-    return 'build'
+  const fallbackAgentName = fallbackAgentSelections[area]
+
+  if (availableAgentNames.has(fallbackAgentName)) {
+    return fallbackAgentName
   }
 
   return agents[0]?.name
