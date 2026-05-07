@@ -107,6 +107,19 @@ describe('OpenCode chat client', () => {
     })
   })
 
+  it('accepts empty successful prompt responses', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      sendOpenCodePrompt(config, {
+        sessionID: 'ses_1',
+        directory: '/Users/example/project',
+        text: 'prep this work',
+      }),
+    ).resolves.toBeNull()
+  })
+
   it('loads projects from OpenCode', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify([{ id: 'proj_1', worktree: '/Users/example/project', sandboxes: [] }]), {

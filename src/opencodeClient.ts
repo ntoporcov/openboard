@@ -386,7 +386,7 @@ export async function sendOpenCodePrompt(
     throw new Error(body || `OpenCode prompt failed with ${response.status}.`)
   }
 
-  return (await response.json()) as OpenCodeMessage
+  return readJsonResponse<OpenCodeMessage>(response)
 }
 
 export function subscribeOpenCodeEvents(
@@ -481,5 +481,15 @@ export async function createOpenCodeTask(task: OpenCodeTaskRequest) {
     throw new Error(`OpenCode request failed with ${response.status}`)
   }
 
-  return (await response.json()) as OpenCodeTaskResponse
+  return readJsonResponse<OpenCodeTaskResponse>(response)
+}
+
+async function readJsonResponse<T>(response: Response) {
+  const body = await response.text()
+
+  if (!body.trim()) {
+    return null
+  }
+
+  return JSON.parse(body) as T
 }

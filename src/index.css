@@ -500,7 +500,8 @@
 }
 
 .openboard-app[data-theme="opencode"] .ob-icon-button:hover,
-.openboard-app[data-theme="opencode"] .ob-card:hover {
+.openboard-app[data-theme="opencode"] .ob-card:hover,
+.openboard-app[data-theme="opencode"] .ob-menu button:hover {
   background: var(--ob-empty);
 }
 
