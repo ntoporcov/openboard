@@ -169,6 +169,7 @@ function App() {
 
   const activeCard = cards.find((card) => card.id === activeId) ?? null
   const activePrepSession = prepSessions.find((session) => session.id === activePrepSessionId) ?? null
+  const resolvedAgentSelections = resolveAgentSelections(agentSelections, agents)
 
   useEffect(() => {
     let cancelled = false
@@ -496,6 +497,12 @@ function App() {
       return
     }
 
+    const agentName = selectedAgentName('prep', agentSelections.prep, agents)
+
+    if (!agentName) {
+      throw new Error('OpenCode has not reported any available agents yet.')
+    }
+
     const messageID = createOpenCodeId('message')
     const part = createOpenCodeTextPart(text)
     const optimisticMessage: OpenCodeMessage = {
@@ -517,7 +524,7 @@ function App() {
         sessionID: activePrepSession.opencodeSessionId,
         directory: activePrepSession.projectDirectory,
         text,
-        agent: selectedAgentName('prep', agentSelections.prep, agents),
+        agent: agentName,
         messageID,
         part,
       })
@@ -607,7 +614,7 @@ function App() {
             activePrepSessionId={activePrepSessionId}
             agents={agents}
             agentError={agentError}
-            selectedAgent={agentSelections.prep}
+            selectedAgent={resolvedAgentSelections.prep}
             onAgentSelected={(agentName) => handleAgentSelected('prep', agentName)}
             onCreate={() => setSidebarState('new')}
             onOpen={handleOpenPrepSession}
@@ -630,7 +637,7 @@ function App() {
                 column={column}
                 cards={cards.filter((card) => card.status === column.id)}
                 agents={agents}
-                selectedAgent={agentSelections[column.id]}
+                selectedAgent={resolvedAgentSelections[column.id]}
                 fallbackAgent={fallbackAgentSelections[column.id]}
                 onAgentSelected={(agentName) => handleAgentSelected(column.id, agentName)}
               />
@@ -1266,12 +1273,12 @@ function AreaAgentSelect({
   fallbackValue: string
   onChange: (agentName: string) => void
 }) {
-  const agentOptions = normalizedAgentOptions(agents, fallbackValue)
+  const agentOptions = normalizedAgentOptions(agents)
   const [open, setOpen] = useState(false)
   const selectedAgent = agentOptions.find((agent) => agent.name === value)
     ?? agentOptions.find((agent) => agent.name === fallbackValue)
     ?? agentOptions[0]
-  const selectedLabel = selectedAgent ? displayAgentName(selectedAgent.name) : 'Agent'
+  const selectedLabel = selectedAgent ? displayAgentName(selectedAgent.name) : 'No agents'
   const isFallback = selectedAgent?.name !== value
 
   return (
@@ -1288,6 +1295,7 @@ function AreaAgentSelect({
         type="button"
         aria-expanded={open}
         aria-haspopup="listbox"
+        disabled={agentOptions.length === 0}
         title={error ?? `${areaLabel} agent: ${selectedLabel}${isFallback ? ` (fallback for ${displayAgentName(value)})` : ''}`}
         onClick={() => setOpen((currentOpen) => !currentOpen)}
       >
@@ -1297,7 +1305,7 @@ function AreaAgentSelect({
         <span className="ob-muted shrink-0 text-[0.65rem]" aria-hidden="true">▾</span>
       </Button>
 
-      {open ? (
+      {open && agentOptions.length > 0 ? (
         <div
           className="ob-menu absolute right-0 top-[calc(100%+0.35rem)] z-30 grid w-[min(15rem,calc(100vw-2rem))] gap-1 rounded-[18px] p-1.5 text-xs backdrop-blur-2xl"
           role="listbox"
@@ -1724,25 +1732,15 @@ function saveAppearanceSettings(settings: AppearanceSettings) {
   localStorage.setItem(appearanceStorageKey, JSON.stringify(settings))
 }
 
-function normalizedAgentOptions(agents: OpenCodeAgent[], fallbackAgentName?: string) {
-  const map = new Map<string, OpenCodeAgent>()
+function normalizedAgentOptions(agents: OpenCodeAgent[]) {
+  return [...agents].sort((a, b) => displayAgentName(a.name).localeCompare(displayAgentName(b.name)))
+}
 
-  agents.forEach((agent) => map.set(agent.name, agent))
-  Object.values(defaultAgentSelections).forEach((agentName) => {
-    if (!map.has(agentName)) {
-      map.set(agentName, { name: agentName, mode: 'all' })
-    }
-  })
-  Object.values(fallbackAgentSelections).forEach((agentName) => {
-    if (!map.has(agentName)) {
-      map.set(agentName, { name: agentName, mode: 'all' })
-    }
-  })
-  if (fallbackAgentName && !map.has(fallbackAgentName)) {
-    map.set(fallbackAgentName, { name: fallbackAgentName, mode: 'all' })
-  }
-
-  return Array.from(map.values()).sort((a, b) => displayAgentName(a.name).localeCompare(displayAgentName(b.name)))
+function resolveAgentSelections(selections: AreaAgentSelections, agents: OpenCodeAgent[]) {
+  return (Object.keys(selections) as BoardAreaId[]).reduce<AreaAgentSelections>((resolvedSelections, area) => {
+    resolvedSelections[area] = selectedAgentName(area, selections[area], agents) ?? selections[area]
+    return resolvedSelections
+  }, { ...selections })
 }
 
 function selectedAgentName(area: BoardAreaId, agentName: string, agents: OpenCodeAgent[]) {
