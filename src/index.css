@@ -352,82 +352,94 @@
 }
 
 .openboard-app[data-theme="opencode"] {
-  --ob-bg: #ffffff;
-  --ob-text: #000000;
-  --ob-muted: #555555;
-  --ob-muted-strong: #333333;
-  --ob-accent: #000000;
-  --ob-accent-strong: #000000;
-  --ob-primary: #ffffff;
-  --ob-primary-hover: #f2f2f2;
-  --ob-primary-text: #000000;
-  --ob-surface: #ffffff;
+  --ob-bg: #f8f8f8;
+  --ob-text: #171717;
+  --ob-muted: #6f6f6f;
+  --ob-muted-strong: #8f8f8f;
+  --ob-accent: #034cff;
+  --ob-accent-strong: #034cff;
+  --ob-primary: #171717;
+  --ob-primary-hover: #020202;
+  --ob-primary-text: #fcfcfc;
+  --ob-secondary: #fcfcfc;
+  --ob-secondary-hover: #f8f8f8;
+  --ob-surface: #fcfcfc;
   --ob-surface-strong: #ffffff;
-  --ob-surface-soft: #ffffff;
-  --ob-border: #000000;
-  --ob-border-strong: #000000;
-  --ob-empty: #ffffff;
-  --ob-input: #ffffff;
-  --ob-input-border: #000000;
-  --ob-danger-bg: #ffffff;
-  --ob-danger-border: #d1383d;
-  --ob-danger-text: #d1383d;
-  --ob-warning-bg: #ffffff;
-  --ob-warning-border: #d68c27;
-  --ob-warning-text: #8a5919;
+  --ob-surface-soft: #f3f3f3;
+  --ob-border: #e5e5e5;
+  --ob-border-strong: rgb(0 0 0 / 0.162);
+  --ob-empty: rgb(0 0 0 / 0.031);
+  --ob-input: #fcfcfc;
+  --ob-input-border: rgb(0 0 0 / 0.162);
+  --ob-danger-bg: #fff2f0;
+  --ob-danger-border: #fdc3b7;
+  --ob-danger-text: #ed4831;
+  --ob-warning-bg: #fcf3cb;
+  --ob-warning-border: #e8d479;
+  --ob-warning-text: rgb(0 0 0 / 0.574);
   --ob-shadow: none;
   --ob-card-shadow: none;
-  --ob-backdrop: #ffffff;
+  --ob-backdrop: #f8f8f8;
   --ob-glow: transparent;
-  --ob-logo: #ffffff;
+  --ob-logo: #fcfcfc;
 }
 
 .openboard-app[data-theme="opencode"][data-mode="dark"],
 .openboard-app[data-theme="opencode"][data-mode="system"] {
-  --ob-bg: #0a0a0a;
-  --ob-text: #eeeeee;
-  --ob-muted: #9a9a9a;
-  --ob-muted-strong: #eeeeee;
-  --ob-accent: #eeeeee;
-  --ob-accent-strong: #eeeeee;
-  --ob-primary: #ffffff;
-  --ob-primary-hover: #e7e7e7;
-  --ob-primary-text: #000000;
-  --ob-surface: #0a0a0a;
-  --ob-surface-strong: #0a0a0a;
-  --ob-surface-soft: #0a0a0a;
-  --ob-border: #eeeeee;
-  --ob-border-strong: #eeeeee;
-  --ob-empty: #0a0a0a;
-  --ob-input: #0a0a0a;
-  --ob-input-border: #eeeeee;
-  --ob-backdrop: #0a0a0a;
+  --ob-bg: #101010;
+  --ob-text: rgb(255 255 255 / 0.936);
+  --ob-muted: rgb(255 255 255 / 0.618);
+  --ob-muted-strong: rgb(255 255 255 / 0.422);
+  --ob-accent: #9dbefe;
+  --ob-accent-strong: #034cff;
+  --ob-primary: #ededed;
+  --ob-primary-hover: #fdfcfc;
+  --ob-primary-text: #161616;
+  --ob-secondary: #1c1c1c;
+  --ob-secondary-hover: rgb(255 255 255 / 0.039);
+  --ob-surface: #121212;
+  --ob-surface-strong: #1c1c1c;
+  --ob-surface-soft: #1e1e1e;
+  --ob-border: #282828;
+  --ob-border-strong: rgb(255 255 255 / 0.195);
+  --ob-empty: rgb(255 255 255 / 0.031);
+  --ob-input: #1c1c1c;
+  --ob-input-border: rgb(255 255 255 / 0.195);
+  --ob-danger-bg: #1f0603;
+  --ob-danger-border: #6a1206;
+  --ob-danger-text: #fc533a;
+  --ob-warning-bg: #fdf3cf;
+  --ob-warning-border: #e9d282;
+  --ob-warning-text: rgb(255 255 255 / 0.603);
+  --ob-backdrop: #101010;
   --ob-glow: transparent;
-  --ob-logo: #0a0a0a;
+  --ob-logo: #1c1c1c;
 }
 
 @media (prefers-color-scheme: light) {
   .openboard-app[data-theme="opencode"][data-mode="system"] {
-    --ob-bg: #ffffff;
-    --ob-text: #000000;
-    --ob-muted: #555555;
-    --ob-muted-strong: #333333;
-    --ob-accent: #000000;
-    --ob-accent-strong: #000000;
-    --ob-primary: #ffffff;
-    --ob-primary-hover: #f2f2f2;
-    --ob-primary-text: #000000;
-    --ob-surface: #ffffff;
+    --ob-bg: #f8f8f8;
+    --ob-text: #171717;
+    --ob-muted: #6f6f6f;
+    --ob-muted-strong: #8f8f8f;
+    --ob-accent: #034cff;
+    --ob-accent-strong: #034cff;
+    --ob-primary: #171717;
+    --ob-primary-hover: #020202;
+    --ob-primary-text: #fcfcfc;
+    --ob-secondary: #fcfcfc;
+    --ob-secondary-hover: #f8f8f8;
+    --ob-surface: #fcfcfc;
     --ob-surface-strong: #ffffff;
-    --ob-surface-soft: #ffffff;
-    --ob-border: #000000;
-    --ob-border-strong: #000000;
-    --ob-empty: #ffffff;
-    --ob-input: #ffffff;
-    --ob-input-border: #000000;
-    --ob-backdrop: #ffffff;
+    --ob-surface-soft: #f3f3f3;
+    --ob-border: #e5e5e5;
+    --ob-border-strong: rgb(0 0 0 / 0.162);
+    --ob-empty: rgb(0 0 0 / 0.031);
+    --ob-input: #fcfcfc;
+    --ob-input-border: rgb(0 0 0 / 0.162);
+    --ob-backdrop: #f8f8f8;
     --ob-glow: transparent;
-    --ob-logo: #ffffff;
+    --ob-logo: #fcfcfc;
   }
 }
 
@@ -447,18 +459,8 @@
 }
 
 .openboard-app[data-theme="opencode"] .ob-logo,
-.openboard-app[data-theme="opencode"] .ob-primary,
 .openboard-app[data-theme="opencode"] .ob-secondary-button,
-.openboard-app[data-theme="opencode"] .ob-card,
-.openboard-app[data-theme="opencode"] .ob-pill,
-.openboard-app[data-theme="opencode"] .ob-menu,
-.openboard-app[data-theme="opencode"] .ob-surface,
-.openboard-app[data-theme="opencode"] .ob-column,
-.openboard-app[data-theme="opencode"] .ob-sidebar,
-.openboard-app[data-theme="opencode"] .ob-input,
-.openboard-app[data-theme="opencode"] .ob-empty,
-.openboard-app[data-theme="opencode"] .ob-dropzone,
-.openboard-app[data-theme="opencode"] [class*="rounded-"] {
+.openboard-app[data-theme="opencode"] .ob-sidebar {
   border-radius: 0;
 }
 
@@ -484,11 +486,22 @@
   font-weight: 700;
 }
 
-.openboard-app[data-theme="opencode"] .ob-primary:hover,
-.openboard-app[data-theme="opencode"] .ob-secondary-button:hover,
+.openboard-app[data-theme="opencode"] .ob-secondary-button {
+  color: var(--ob-text);
+  background: var(--ob-secondary);
+}
+
+.openboard-app[data-theme="opencode"] .ob-primary:hover {
+  background: var(--ob-primary-hover);
+}
+
+.openboard-app[data-theme="opencode"] .ob-secondary-button:hover {
+  background: var(--ob-secondary-hover);
+}
+
 .openboard-app[data-theme="opencode"] .ob-icon-button:hover,
 .openboard-app[data-theme="opencode"] .ob-card:hover {
-  background: var(--ob-primary-hover);
+  background: var(--ob-empty);
 }
 
 .openboard-app[data-theme="opencode"] .ob-card-active,
@@ -500,6 +513,39 @@
 
 .openboard-app[data-theme="opencode"] .ob-glow {
   display: none;
+}
+
+.openboard-app[data-theme="opencode"] header.ob-surface {
+  border-radius: 10px 10px 0 0;
+}
+
+.openboard-app[data-theme="opencode"] section.ob-surface,
+.openboard-app[data-theme="opencode"] .ob-column {
+  border-radius: 0;
+}
+
+.openboard-app[data-theme="opencode"] [aria-label="Kanban board"] .ob-column:first-child {
+  border-bottom-left-radius: 10px;
+}
+
+.openboard-app[data-theme="opencode"] [aria-label="Kanban board"] .ob-column:last-child {
+  border-bottom-right-radius: 10px;
+}
+
+.openboard-app[data-theme="opencode"] .ob-card,
+.openboard-app[data-theme="opencode"] .ob-pill,
+.openboard-app[data-theme="opencode"] .ob-menu,
+.openboard-app[data-theme="opencode"] .ob-input,
+.openboard-app[data-theme="opencode"] .ob-empty,
+.openboard-app[data-theme="opencode"] .ob-dropzone,
+.openboard-app[data-theme="opencode"] .ob-icon-button,
+.openboard-app[data-theme="opencode"] .ob-logo {
+  border-radius: 6px;
+}
+
+.openboard-app[data-theme="opencode"] .ob-primary,
+.openboard-app[data-theme="opencode"] .ob-secondary-button {
+  border-radius: 8px;
 }
 
 .openboard-app[data-theme="opencode"] > .relative,
