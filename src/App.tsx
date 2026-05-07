@@ -502,8 +502,10 @@ function App() {
 
     setMessages((currentMessages) => [...currentMessages, optimisticMessage])
 
+    let submittedMessage: OpenCodeMessage | null = null
+
     try {
-      await sendOpenCodePrompt(connection.config, {
+      submittedMessage = await sendOpenCodePrompt(connection.config, {
         sessionID: activePrepSession.opencodeSessionId,
         directory: activePrepSession.projectDirectory,
         text,
@@ -516,11 +518,19 @@ function App() {
       throw error
     }
 
-    const nextMessages = await listOpenCodeMessages(connection.config, {
-      sessionID: activePrepSession.opencodeSessionId,
-      directory: activePrepSession.projectDirectory,
-    })
-    setMessages(nextMessages)
+    if (submittedMessage) {
+      setMessages((currentMessages) => mergeMessages(currentMessages, [submittedMessage]))
+    }
+
+    try {
+      const nextMessages = await listOpenCodeMessages(connection.config, {
+        sessionID: activePrepSession.opencodeSessionId,
+        directory: activePrepSession.projectDirectory,
+      })
+      setMessages((currentMessages) => mergeMessages(currentMessages, nextMessages))
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : 'Unable to refresh OpenCode messages.')
+    }
   }
 
   const connectionLabel = getConnectionLabel(connection)
@@ -1334,6 +1344,11 @@ function MessageList({ messages, busy }: { messages: OpenCodeMessage[]; busy: bo
 function MessageBubble({ message }: { message: OpenCodeMessage }) {
   const user = message.info.role === 'user'
   const errorText = formatMessageError(message.info.error)
+  const visibleParts = message.parts.filter(isVisibleMessagePart)
+
+  if (!errorText && visibleParts.length === 0 && !user) {
+    return null
+  }
 
   return (
     <div className={classNames('flex', user ? 'justify-end' : 'justify-start')}>
@@ -1372,8 +1387,8 @@ function MessageBubble({ message }: { message: OpenCodeMessage }) {
 
         <div className={classNames('grid gap-2 text-sm leading-5', user ? 'text-white' : 'ob-text')}>
           {errorText ? <MessageError text={errorText} /> : null}
-          {message.parts.length > 0 ? (
-            message.parts.map((part) => <MessagePart key={part.id} part={part} />)
+          {visibleParts.length > 0 ? (
+            visibleParts.map((part) => <MessagePart key={part.id} part={part} />)
           ) : !errorText ? (
             <p className={classNames(user ? 'text-white/70' : 'ob-muted')}>Message metadata received.</p>
           ) : null}
@@ -1411,6 +1426,10 @@ function MessagePart({ part }: { part: OpenCodeMessagePart }) {
   }
 
   return <p className="ob-empty rounded-2xl px-3 py-2">{part.type}</p>
+}
+
+function isVisibleMessagePart(part: OpenCodeMessagePart) {
+  return part.type !== 'step-start' && part.type !== 'step-finish'
 }
 
 function MessageError({ text }: { text: string }) {
@@ -1583,6 +1602,23 @@ function TaskCard({
 
 function classNames(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ')
+}
+
+function mergeMessages(currentMessages: OpenCodeMessage[], nextMessages: OpenCodeMessage[]) {
+  const messages = new Map(currentMessages.map((message) => [message.info.id, message]))
+
+  nextMessages.forEach((message) => messages.set(message.info.id, message))
+
+  return Array.from(messages.values()).sort((first, second) => {
+    const firstCreated = first.info.time?.created ?? 0
+    const secondCreated = second.info.time?.created ?? 0
+
+    if (firstCreated !== secondCreated) {
+      return firstCreated - secondCreated
+    }
+
+    return first.info.id.localeCompare(second.info.id)
+  })
 }
 
 function getConnectionLabel(connection: ConnectionState) {
