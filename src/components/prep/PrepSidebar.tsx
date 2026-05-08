@@ -46,20 +46,21 @@ export function PrepSidebar({
   const latestEvent = events[0]
   const streamLabel = latestEvent ? `${latestEvent.type} ${formatRelativeTime(latestEvent.at)}` : 'Listening'
   const sessionQuestions = session
-    ? questions.filter((question) => question.sessionID === session.opencodeSessionId)
+    ? questions.filter((question) => question.sessionID === session.opencodeSessionId || question.sessionID === session.id)
     : []
   const sessionPermissions = session
     ? permissions.filter((permission) => permission.sessionID === session.opencodeSessionId)
     : []
+  const hasPendingQuestion = sessionQuestions.length > 0 || messages.some(hasUnresolvedQuestionToolPart)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' })
-  }, [messages, status, localError, error])
+  }, [messages, status, localError, error, hasPendingQuestion])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!draft.trim()) return
+    if (hasPendingQuestion || !draft.trim()) return
 
     const submittedDraft = draft.trim()
 
@@ -150,19 +151,25 @@ export function PrepSidebar({
 
       <form className="ob-sidebar-footer p-4 backdrop-blur-2xl backdrop-saturate-150" onSubmit={handleSubmit}>
         {(error || localError) && <p className="ob-danger mb-3 rounded-2xl px-3 py-2 text-sm leading-5">{localError ?? error}</p>}
-        <textarea
-          className="ob-input min-h-24 w-full resize-none rounded-[24px] px-4 py-3 text-sm leading-5 outline-none transition"
-          value={draft}
-          placeholder="Prep the session: goals, repo context, files to inspect, constraints, and acceptance criteria..."
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={handleComposerKeyDown}
-        />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="ob-muted text-xs">Enter sends. Shift Enter adds a line.</p>
-          <Button className="ob-primary rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2" type="submit" disabled={status === 'working' || !draft.trim()}>
-            {status === 'working' ? 'Sending...' : 'Send to OpenCode'}
-          </Button>
-        </div>
+        {hasPendingQuestion ? (
+          <p className="ob-empty rounded-2xl px-3 py-2 text-sm leading-5">Answer the pending question above to continue this session.</p>
+        ) : (
+          <>
+            <textarea
+              className="ob-input min-h-24 w-full resize-none rounded-[24px] px-4 py-3 text-sm leading-5 outline-none transition"
+              value={draft}
+              placeholder="Prep the session: goals, repo context, files to inspect, constraints, and acceptance criteria..."
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
+            />
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="ob-muted text-xs">Enter sends. Shift Enter adds a line.</p>
+              <Button className="ob-primary rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2" type="submit" disabled={status === 'working' || !draft.trim()}>
+                {status === 'working' ? 'Sending...' : 'Send to OpenCode'}
+              </Button>
+            </div>
+          </>
+        )}
       </form>
     </aside>
   )
@@ -175,4 +182,17 @@ function OptionDetail({ label, value }: { label: string; value: string }) {
       <p className="ob-text mt-1 break-all text-xs font-medium leading-4">{value}</p>
     </div>
   )
+}
+
+function hasUnresolvedQuestionToolPart(message: ReturnType<typeof useSessionMessages>[number]) {
+  return message.parts.some((part) => {
+    if (part.type !== 'tool' || part.tool !== 'question') return false
+
+    const metadata = part.state?.metadata
+    return !isRecord(metadata) || !('answers' in metadata)
+  })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }

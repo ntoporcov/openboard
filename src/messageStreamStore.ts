@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { latestAssistantMessagePreview } from './app/utils'
+import { latestAssistantMessagePreview, latestPhaseMarkerStatus } from './app/utils'
+import type { BoardAreaId } from './app/types'
 import type { OpenCodeMessage } from './opencodeClient'
 
 type MessageStreamState = {
@@ -66,4 +67,8 @@ export function useSessionPreview(sessionId: string) {
 
 export function useSessionPreviewLoading(sessionId: string) {
   return useMessageStreamStore((state) => state.loadingBySession[sessionId] ?? false)
+}
+
+export function useSessionPhaseStatus(sessionId: string, area: BoardAreaId) {
+  return useMessageStreamStore((state) => latestPhaseMarkerStatus(state.messagesBySession[sessionId] ?? emptyMessages, area))
 }

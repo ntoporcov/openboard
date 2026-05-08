@@ -76,7 +76,15 @@ export function removeMessagePart(currentMessages: OpenCodeMessage[], input: { m
 }
 
 export function latestAssistantMessagePreview(messages: OpenCodeMessage[]) {
-  const text = [...messages]
+  const text = latestAssistantMessageText(messages)
+
+  if (!text) return ''
+
+  return lastSentences(stripMarkdown(text), 2)
+}
+
+export function latestAssistantMessageText(messages: OpenCodeMessage[]) {
+  return [...messages]
     .reverse()
     .filter((message) => message.info.role === 'assistant')
     .map((message) => message.parts
@@ -85,10 +93,40 @@ export function latestAssistantMessagePreview(messages: OpenCodeMessage[]) {
       .join('\n\n')
       .trim())
     .find(Boolean)
+    ?? ''
+}
 
-  if (!text) return ''
+export type PhaseMarkerStatus = {
+  marker: string
+  label: 'Ready To Move' | 'Needs Review' | 'Move it Back'
+  tone: 'ready' | 'check' | 'failed'
+}
 
-  return lastSentences(stripMarkdown(text), 2)
+const phaseMarkerStatuses: Record<string, PhaseMarkerStatus> = {
+  '[[PREP_DONE]]': { marker: '[[PREP_DONE]]', label: 'Ready To Move', tone: 'ready' },
+  '[[PREP_CHECK]]': { marker: '[[PREP_CHECK]]', label: 'Needs Review', tone: 'check' },
+  '[[PLAN_DONE]]': { marker: '[[PLAN_DONE]]', label: 'Ready To Move', tone: 'ready' },
+  '[[PLAN_CHECK]]': { marker: '[[PLAN_CHECK]]', label: 'Needs Review', tone: 'check' },
+  '[[DEV_DONE]]': { marker: '[[DEV_DONE]]', label: 'Ready To Move', tone: 'ready' },
+  '[[DEV_CHECK]]': { marker: '[[DEV_CHECK]]', label: 'Needs Review', tone: 'check' },
+  '[[REVIEW_APPROVED]]': { marker: '[[REVIEW_APPROVED]]', label: 'Ready To Move', tone: 'ready' },
+  '[[REVIEW_CHECK]]': { marker: '[[REVIEW_CHECK]]', label: 'Needs Review', tone: 'check' },
+  '[[REVIEW_FAILED]]': { marker: '[[REVIEW_FAILED]]', label: 'Move it Back', tone: 'failed' },
+  '[[TEST_APPROVED]]': { marker: '[[TEST_APPROVED]]', label: 'Ready To Move', tone: 'ready' },
+  '[[TEST_CHECK]]': { marker: '[[TEST_CHECK]]', label: 'Needs Review', tone: 'check' },
+  '[[TEST_FAILED]]': { marker: '[[TEST_FAILED]]', label: 'Move it Back', tone: 'failed' },
+}
+
+export function latestPhaseMarkerStatus(messages: OpenCodeMessage[], area: BoardAreaId) {
+  const text = latestAssistantMessageText(messages)
+
+  return phaseMarkers[area]
+    .map((marker) => ({ marker, index: text.lastIndexOf(marker) }))
+    .filter((match) => match.index >= 0)
+    .sort((first, second) => second.index - first.index)
+    .map((match) => phaseMarkerStatuses[match.marker])
+    .find(Boolean)
+    ?? null
 }
 
 export function lastSentences(text: string, count: number) {
@@ -206,11 +244,11 @@ export function appendPhaseReadinessInstruction(message: string, area: BoardArea
 }
 
 const phaseMarkers: Record<BoardAreaId, string[]> = {
-  prep: [],
+  prep: ['[[PREP_DONE]]', '[[PREP_CHECK]]'],
   plan: ['[[PLAN_DONE]]', '[[PLAN_CHECK]]'],
   build: ['[[DEV_DONE]]', '[[DEV_CHECK]]'],
-  review: ['[[REVIEW_APPROVED]]', '[[REVIEW_CHECK]]'],
-  test: ['[[TEST_APPROVED]]', '[[TEST_CHECK]]'],
+  review: ['[[REVIEW_APPROVED]]', '[[REVIEW_CHECK]]', '[[REVIEW_FAILED]]'],
+  test: ['[[TEST_APPROVED]]', '[[TEST_CHECK]]', '[[TEST_FAILED]]'],
 }
 
 function includesPhaseMarker(message: string, area: BoardAreaId) {
@@ -219,6 +257,7 @@ function includesPhaseMarker(message: string, area: BoardAreaId) {
 
 function stripMarkdown(text: string) {
   return text
+    .replace(/\[\[(?:PREP|PLAN|DEV|REVIEW|TEST)_(?:DONE|CHECK|APPROVED|FAILED)]]/g, ' ')
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')

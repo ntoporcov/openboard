@@ -136,6 +136,18 @@ function App() {
   const visiblePrepSessions = prepSessions.filter((session) => session.status === 'prepping' && session.projectDirectory === selectedBoardProjectDirectory)
   const selectedProjectSessionIds = new Set(prepSessions.filter((session) => session.projectDirectory === selectedBoardProjectDirectory).map((session) => session.id))
   const visibleCards = cards.filter((card) => selectedProjectSessionIds.has(card.id))
+  const questionsByCardId = useMemo(() => {
+    const cardQuestions: Record<string, OpenCodeQuestionRequest[]> = {}
+    const prepSessionBySessionId = new Map(prepSessions.flatMap((session) => [[session.id, session], [session.opencodeSessionId, session]] as const))
+
+    questions.forEach((question) => {
+      const prepSession = prepSessionBySessionId.get(question.sessionID)
+      if (!prepSession) return
+      cardQuestions[prepSession.id] = [...(cardQuestions[prepSession.id] ?? []), question]
+    })
+
+    return cardQuestions
+  }, [prepSessions, questions])
   const resolvedAgentSelections = resolveAgentSelections(agentSelections, boardAgents)
   const busySessionIds = useMemo(() => new Set(
     [...prepSessions, ...openedChildSessions]
@@ -146,6 +158,16 @@ function App() {
   const setSessionMessages = useMessageStreamStore((state) => state.setSessionMessages)
   const updateSessionMessages = useMessageStreamStore((state) => state.updateSessionMessages)
   const clearSessionMessages = useMessageStreamStore((state) => state.clearSessionMessages)
+  const messagesBySession = useMessageStreamStore((state) => state.messagesBySession)
+  const questionPendingBySessionId = useMemo(() => {
+    const pendingBySessionId: Record<string, boolean> = {}
+
+    Object.entries(messagesBySession).forEach(([sessionId, messages]) => {
+      pendingBySessionId[sessionId] = messages.some(hasUnresolvedQuestionToolPart)
+    })
+
+    return pendingBySessionId
+  }, [messagesBySession])
 
   useEffect(() => {
     let cancelled = false
@@ -391,7 +413,7 @@ function App() {
       onEvent: (event) => {
         const payload = event.payload
         const sessionID = getOpenCodeEventSessionID(payload)
-        const prepSession = [...prepSessions, ...openedChildSessions].find((session) => session.opencodeSessionId === sessionID)
+        const prepSession = [...prepSessions, ...openedChildSessions].find((session) => session.opencodeSessionId === sessionID || session.id === sessionID)
 
         if (!prepSession) return
 
@@ -455,14 +477,6 @@ function App() {
 
         setSessionEvents((currentEvents) => [{ id: `${Date.now()}-${payload.type}`, type: payload.type, at: Date.now() }, ...currentEvents].slice(0, 8))
 
-        if (prepSession.id !== activePrepSessionId) return
-
-        if (payload.type === 'message.part.updated') {
-          void listOpenCodeSessionChildren(config, { sessionID: prepSession.opencodeSessionId })
-            .then(setChildSessions)
-            .catch(() => {})
-        }
-
         if (payload.type === 'question.asked') {
           setQuestions((currentQuestions) => upsertById(currentQuestions, payload.properties as OpenCodeQuestionRequest))
         }
@@ -470,6 +484,14 @@ function App() {
         if (payload.type === 'question.replied') {
           const requestID = typeof payload.properties?.requestID === 'string' ? payload.properties.requestID : null
           if (requestID) setQuestions((currentQuestions) => currentQuestions.filter((question) => question.id !== requestID))
+        }
+
+        if (prepSession.id !== activePrepSessionId) return
+
+        if (payload.type === 'message.part.updated') {
+          void listOpenCodeSessionChildren(config, { sessionID: prepSession.opencodeSessionId })
+            .then(setChildSessions)
+            .catch(() => {})
         }
 
         if (payload.type === 'permission.asked') {
@@ -577,7 +599,7 @@ function App() {
     setConfigArea(null)
   }
 
-  function handlePrepTicketDragStart(event: DragEvent<HTMLButtonElement>, session: OpenBoardPrepSession) {
+  function handlePrepTicketDragStart(event: DragEvent<HTMLDivElement>, session: OpenBoardPrepSession) {
     event.dataTransfer.effectAllowed = 'copy'
     event.dataTransfer.setData('application/x-openboard-prep-session', session.id)
     event.dataTransfer.setData('text/plain', session.title)
@@ -897,6 +919,8 @@ function App() {
             prepSessions={visiblePrepSessions}
             activePrepSessionId={activePrepSessionId}
             busySessionIds={busySessionIds}
+            questionsBySessionId={questionsByCardId}
+            questionPendingBySessionId={questionPendingBySessionId}
             agents={boardAgents}
             agentError={displayedAgentError}
             selectedAgent={resolvedAgentSelections.prep}
@@ -904,6 +928,7 @@ function App() {
             onCreate={() => setSidebarState('new')}
             onConfigure={() => setConfigArea('prep')}
             onOpen={handleOpenPrepSession}
+            onQuestionReply={handleQuestionReply}
             onTicketDragStart={handlePrepTicketDragStart}
           />
         </div>
@@ -915,9 +940,11 @@ function App() {
             agents={boardAgents}
             agentSelections={resolvedAgentSelections}
             busySessionIds={busySessionIds}
+            questionsByCardId={questionsByCardId}
             chatAffordance={sidebarState !== 'closed'}
             onCardsChange={handleCardsChange}
             onCardOpen={handleOpenCard}
+            onQuestionReply={handleQuestionReply}
             onCardStatusChange={handleCardStatusChange}
             onAgentSelected={handleAgentSelected}
             onConfigureArea={setConfigArea}
@@ -1016,6 +1043,19 @@ function getOpenCodeEventSessionID(event: OpenCodeEvent) {
   if (typeof info?.sessionID === 'string') return info.sessionID
 
   return undefined
+}
+
+function hasUnresolvedQuestionToolPart(message: OpenCodeMessage) {
+  return message.parts.some((part) => {
+    if (part.type !== 'tool' || part.tool !== 'question') return false
+
+    const metadata = part.state?.metadata
+    return !isRecord(metadata) || !('answers' in metadata)
+  })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 function createPrepSessionTitle(instruction: string) {

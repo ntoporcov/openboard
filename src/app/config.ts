@@ -28,9 +28,9 @@ export const defaultPromptTemplates: AreaPromptTemplates = {
 
 Do not think about implementation yet and do not begin coding. Your goal is to help uncover hidden details, constraints, risks, edge cases, dependencies, and decisions the user may not be considering.
 
-Keep this conversational. Avoid long blocks of text, avoid dumping every concern in one reply, and ask one focused question at a time so the user can respond naturally. Briefly explain why a question matters when useful, then wait for the user's answer before moving to the next question or concern.
+Keep this conversational. Avoid long blocks of text and avoid dumping every concern in one reply. If you need a user decision or missing detail, use the Question tool instead of asking inline in chat so OpenBoard can surface it on the card.
 
-When you think you know enough for the work to move into Plan, say that explicitly and explain the remaining assumptions or risks in a compact handoff. If you do not know enough yet, say what is still missing.
+Finish this round with a concise conclusion and exactly one marker: [[PREP_DONE]] when the task is ready to move into Plan, or [[PREP_CHECK]] when the user should read your conclusion or answer questions before the ticket moves on.
 
 User's prep instruction:
 {{user_message}}`,
@@ -60,7 +60,7 @@ Prioritize bugs, behavioral regressions, missing requirements, risky assumptions
 
 If you need clarification to determine whether the work is correct, use the Question tool instead of asking inline in chat so OpenBoard can surface it on the card.
 
-Finish this round with a concise conclusion and exactly one marker: [[REVIEW_APPROVED]] when the changes satisfy the plan, or [[REVIEW_CHECK]] when the user should read your conclusion because there are issues, risks, or unresolved questions before moving on.
+Finish this round with a concise conclusion and exactly one marker: [[REVIEW_APPROVED]] when the changes satisfy the plan, [[REVIEW_CHECK]] when the user should read your conclusion because there are risks or unresolved questions, or [[REVIEW_FAILED]] when the ticket should move back to Build because the changes are incorrect or incomplete.
 
 User message:
 {{user_message}}`,
@@ -70,18 +70,18 @@ For UI changes, walk the experience like a user and use Playwright when it can v
 
 If you need user input to validate the experience or decide expected behavior, use the Question tool instead of asking inline in chat so OpenBoard can surface it on the card.
 
-Finish this round with a concise conclusion and exactly one marker: [[TEST_APPROVED]] when the work passes validation, or [[TEST_CHECK]] when the user should read your conclusion because validation found issues, risks, or unresolved questions.
+Finish this round with a concise conclusion and exactly one marker: [[TEST_APPROVED]] when the work passes validation, [[TEST_CHECK]] when the user should read your conclusion because validation found risks or unresolved questions, or [[TEST_FAILED]] when the ticket should move back because validation failed.
 
 User message:
 {{user_message}}`,
 }
 
 export const phaseReadinessInstructions: AreaPromptTemplates = {
-  prep: 'OpenBoard phase check: if you need a user decision or missing detail, use the Question tool instead of asking inline in chat. When you know enough for this ticket to move into Plan, finish with a concise conclusion and compact handoff. If it is not ready for Plan, say what is still missing.',
+  prep: 'OpenBoard phase check: if you need a user decision or missing detail, use the Question tool instead of asking inline in chat. Finish with a concise conclusion and exactly one marker: [[PREP_DONE]] when the task is ready to move into Plan, or [[PREP_CHECK]] when the user should read your conclusion or answer questions before the ticket moves on.',
   plan: 'OpenBoard phase check: if you need a user decision or missing detail, use the Question tool instead of asking inline in chat. Finish with a concise conclusion and exactly one marker: [[PLAN_DONE]] when the plan is ready to move forward, or [[PLAN_CHECK]] when the user should read your conclusion or answer questions before the ticket moves on.',
   build: 'OpenBoard phase check: if you need a user decision, permission choice, or missing product detail, use the Question tool instead of asking inline in chat. Finish with a concise conclusion and exactly one marker: [[DEV_DONE]] when implementation is complete and ready for review, or [[DEV_CHECK]] when the user should read your conclusion, answer questions, or decide how to handle a blocker.',
-  review: 'OpenBoard phase check: if you need clarification to determine whether the work is correct, use the Question tool instead of asking inline in chat. Finish with a concise conclusion and exactly one marker: [[REVIEW_APPROVED]] when the changes satisfy the plan, or [[REVIEW_CHECK]] when the user should read your conclusion because there are issues, risks, or unresolved questions before moving on.',
-  test: 'OpenBoard phase check: if you need user input to validate the experience or decide expected behavior, use the Question tool instead of asking inline in chat. Finish with a concise conclusion and exactly one marker: [[TEST_APPROVED]] when the work passes validation, or [[TEST_CHECK]] when the user should read your conclusion because validation found issues, risks, or unresolved questions.',
+  review: 'OpenBoard phase check: if you need clarification to determine whether the work is correct, use the Question tool instead of asking inline in chat. Finish with a concise conclusion and exactly one marker: [[REVIEW_APPROVED]] when the changes satisfy the plan, [[REVIEW_CHECK]] when the user should read your conclusion because there are risks or unresolved questions, or [[REVIEW_FAILED]] when the ticket should move back to Build because the changes are incorrect or incomplete.',
+  test: 'OpenBoard phase check: if you need user input to validate the experience or decide expected behavior, use the Question tool instead of asking inline in chat. Finish with a concise conclusion and exactly one marker: [[TEST_APPROVED]] when the work passes validation, [[TEST_CHECK]] when the user should read your conclusion because validation found risks or unresolved questions, or [[TEST_FAILED]] when the ticket should move back because validation failed.',
 }
 
 export const agentSelectionsStorageKey = 'openboard.agentSelections.v1'

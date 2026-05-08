@@ -21,13 +21,15 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@base-ui/react/button'
-import { useMemo, useState, type CSSProperties, type HTMLAttributes, type KeyboardEvent } from 'react'
+import { Popover } from '@base-ui/react/popover'
+import { useMemo, useState, type CSSProperties, type HTMLAttributes, type KeyboardEvent, type PointerEvent } from 'react'
 import type { AreaAgentSelections, Card, Column, ColumnId } from '../../app/types'
-import type { OpenCodeAgent } from '../../opencodeClient'
+import type { OpenCodeAgent, OpenCodeQuestionRequest } from '../../opencodeClient'
 import { fallbackAgentSelections } from '../../app/config'
-import { classNames, displayAgentName, selectedAgentName } from '../../app/utils'
-import { useSessionPreview, useSessionPreviewLoading } from '../../messageStreamStore'
+import { classNames, displayAgentName, selectedAgentName, type PhaseMarkerStatus } from '../../app/utils'
+import { useSessionPhaseStatus, useSessionPreview, useSessionPreviewLoading } from '../../messageStreamStore'
 import { AreaAgentSelect } from '../agents/AreaAgentSelect'
+import { QuestionRequestCard } from '../chat/ChatMessages'
 
 export function KanbanBoard({
   columns,
@@ -35,9 +37,11 @@ export function KanbanBoard({
   agents,
   agentSelections,
   busySessionIds,
+  questionsByCardId,
   chatAffordance,
   onCardsChange,
   onCardOpen,
+  onQuestionReply,
   onCardStatusChange,
   onAgentSelected,
   onConfigureArea,
@@ -48,15 +52,18 @@ export function KanbanBoard({
   agents: OpenCodeAgent[]
   agentSelections: AreaAgentSelections
   busySessionIds: Set<string>
+  questionsByCardId: Record<string, OpenCodeQuestionRequest[]>
   chatAffordance: boolean
   onCardsChange: (cards: Card[] | ((cards: Card[]) => Card[])) => void
   onCardOpen: (card: Card) => void
+  onQuestionReply: (requestID: string, answers: string[][]) => Promise<void>
   onCardStatusChange: (card: Card, nextStatus: ColumnId) => void
   onAgentSelected: (columnId: ColumnId, agentName: string) => void
   onConfigureArea: (columnId: ColumnId) => void
   onPrepTicketDrop: (columnId: ColumnId, prepSessionId: string) => void
 }) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [openQuestionCardId, setOpenQuestionCardId] = useState<string | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -126,9 +133,13 @@ export function KanbanBoard({
               cards={cards.filter((card) => card.status === column.id)}
               agents={agents}
               busySessionIds={busySessionIds}
+              questionsByCardId={questionsByCardId}
+              openQuestionCardId={openQuestionCardId}
               selectedAgent={agentSelections[column.id]}
               fallbackAgent={fallbackAgentSelections[column.id]}
               onCardOpen={onCardOpen}
+              onQuestionReply={onQuestionReply}
+              onQuestionPopoverChange={setOpenQuestionCardId}
               onAgentSelected={(agentName) => onAgentSelected(column.id, agentName)}
               onConfigure={() => onConfigureArea(column.id)}
               onPrepTicketDrop={(prepSessionId) => onPrepTicketDrop(column.id, prepSessionId)}
@@ -138,7 +149,7 @@ export function KanbanBoard({
         {chatAffordance ? <div className="hidden w-[calc(500px_+_0.75rem)] shrink-0 sm:block min-[1380px]:hidden" aria-hidden="true" /> : null}
       </div>
 
-      <DragOverlay>{activeCard ? <TaskCard card={activeCard} busy={busySessionIds.has(activeCard.id)} overlay /> : null}</DragOverlay>
+      <DragOverlay>{activeCard ? <TaskCard card={activeCard} busy={busySessionIds.has(activeCard.id)} questions={[]} overlay /> : null}</DragOverlay>
     </DndContext>
   )
 }
@@ -148,9 +159,13 @@ function KanbanColumn({
   cards,
   agents,
   busySessionIds,
+  questionsByCardId,
+  openQuestionCardId,
   selectedAgent,
   fallbackAgent,
   onCardOpen,
+  onQuestionReply,
+  onQuestionPopoverChange,
   onAgentSelected,
   onConfigure,
   onPrepTicketDrop,
@@ -159,9 +174,13 @@ function KanbanColumn({
   cards: Card[]
   agents: OpenCodeAgent[]
   busySessionIds: Set<string>
+  questionsByCardId: Record<string, OpenCodeQuestionRequest[]>
+  openQuestionCardId: string | null
   selectedAgent: string
   fallbackAgent: string
   onCardOpen: (card: Card) => void
+  onQuestionReply: (requestID: string, answers: string[][]) => Promise<void>
+  onQuestionPopoverChange: (cardId: string | null) => void
   onAgentSelected: (agentName: string) => void
   onConfigure: () => void
   onPrepTicketDrop: (prepSessionId: string) => void
@@ -205,7 +224,18 @@ function KanbanColumn({
 
       <SortableContext items={cardIds} strategy={rectSortingStrategy}>
         <div className="grid flex-1 content-start gap-2.5">
-          {cards.map((card) => <SortableTaskCard key={card.id} card={card} busy={busySessionIds.has(card.id)} onOpen={onCardOpen} />)}
+          {cards.map((card) => (
+            <SortableTaskCard
+              key={card.id}
+              card={card}
+              busy={busySessionIds.has(card.id)}
+              questions={questionsByCardId[card.id] ?? []}
+              questionPopoverOpen={openQuestionCardId === card.id}
+              onOpen={onCardOpen}
+              onQuestionReply={onQuestionReply}
+              onQuestionPopoverChange={(open) => onQuestionPopoverChange(open ? card.id : null)}
+            />
+          ))}
           {cards.length === 0 ? (
             <div className="ob-dropzone rounded-[24px] px-4 py-6 text-center text-sm leading-5 backdrop-blur-xl">
               <p>Drop work here when it is ready for {displayAgentName(activeAgent)}.</p>
@@ -223,14 +253,18 @@ function KanbanColumn({
   )
 }
 
-function SortableTaskCard({ card, busy, onOpen }: { card: Card; busy: boolean; onOpen: (card: Card) => void }) {
+function SortableTaskCard({ card, busy, questions, questionPopoverOpen, onOpen, onQuestionReply, onQuestionPopoverChange }: { card: Card; busy: boolean; questions: OpenCodeQuestionRequest[]; questionPopoverOpen: boolean; onOpen: (card: Card) => void; onQuestionReply: (requestID: string, answers: string[][]) => Promise<void>; onQuestionPopoverChange: (open: boolean) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id })
 
   return (
       <TaskCard
         card={card}
         busy={busy}
+        questions={questions}
+        questionPopoverOpen={questionPopoverOpen}
         onOpen={onOpen}
+        onQuestionReply={onQuestionReply}
+        onQuestionPopoverChange={onQuestionPopoverChange}
         dragProps={{ ...attributes, ...listeners }}
         refCallback={setNodeRef}
         style={{ transform: CSS.Transform.toString(transform), transition }}
@@ -242,7 +276,11 @@ function SortableTaskCard({ card, busy, onOpen }: { card: Card; busy: boolean; o
 function TaskCard({
   card,
   busy,
+  questions,
+  questionPopoverOpen = false,
   onOpen,
+  onQuestionReply,
+  onQuestionPopoverChange,
   overlay = false,
   hidden = false,
   refCallback,
@@ -251,13 +289,20 @@ function TaskCard({
 }: {
   card: Card
   busy: boolean
+  questions: OpenCodeQuestionRequest[]
+  questionPopoverOpen?: boolean
   onOpen?: (card: Card) => void
+  onQuestionReply?: (requestID: string, answers: string[][]) => Promise<void>
+  onQuestionPopoverChange?: (open: boolean) => void
   overlay?: boolean
   hidden?: boolean
   refCallback?: (element: HTMLDivElement | null) => void
   style?: CSSProperties
   dragProps?: HTMLAttributes<HTMLDivElement>
 }) {
+  const pendingQuestion = questions[0]
+  const phaseStatus = useSessionPhaseStatus(card.id, card.status)
+
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'Enter' || !onOpen) {
       dragProps?.onKeyDown?.(event)
@@ -268,9 +313,13 @@ function TaskCard({
     onOpen(card)
   }
 
+  function stopCardInteraction(event: PointerEvent<HTMLElement>) {
+    event.stopPropagation()
+  }
+
   return (
     <div
-      className={classNames('ob-card group min-w-0 cursor-grab rounded-[24px] p-3 backdrop-blur-xl transition hover:-translate-y-0.5 active:cursor-grabbing', overlay && 'w-[290px]', hidden && 'opacity-30')}
+      className={classNames('ob-card group relative min-w-0 cursor-grab rounded-[24px] p-3 backdrop-blur-xl transition hover:-translate-y-0.5 active:cursor-grabbing', overlay && 'w-[290px]', hidden && 'opacity-30')}
       ref={refCallback}
       style={style}
       {...dragProps}
@@ -281,7 +330,53 @@ function TaskCard({
         {busy ? <BusyDot /> : null}
         <h3 className="ob-text min-w-0 break-words text-[0.96rem] font-semibold leading-snug tracking-[-0.01em]">{card.title}</h3>
       </div>
-      <TaskCardPreview sessionId={card.id} />
+      {pendingQuestion && onQuestionReply && onQuestionPopoverChange ? (
+        <QuestionPopoverTrigger
+          label="Question pending"
+          open={questionPopoverOpen}
+          questions={questions}
+          pendingQuestion={pendingQuestion}
+          onOpenChange={onQuestionPopoverChange}
+          onQuestionReply={onQuestionReply}
+          onPointerDown={stopCardInteraction}
+        />
+      ) : <TaskCardPreview sessionId={card.id} />}
+      {phaseStatus ? <PhaseStatusChip status={phaseStatus} /> : null}
+    </div>
+  )
+}
+
+function QuestionPopoverTrigger({ label, open, questions, pendingQuestion, onOpenChange, onQuestionReply, onPointerDown }: { label: string; open: boolean; questions: OpenCodeQuestionRequest[]; pendingQuestion: OpenCodeQuestionRequest; onOpenChange: (open: boolean) => void; onQuestionReply: (requestID: string, answers: string[][]) => Promise<void>; onPointerDown: (event: PointerEvent<HTMLElement>) => void }) {
+  return (
+    <div className="mt-2">
+      <Popover.Root open={open} onOpenChange={(nextOpen) => onOpenChange(nextOpen)}>
+        <Popover.Trigger
+          className="ob-secondary-button inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={onPointerDown}
+        >
+          <span className="size-1.5 rounded-full bg-[var(--ob-primary)]" aria-hidden="true" />
+          {label}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner side="bottom" align="start" sideOffset={6} collisionPadding={12}>
+            <Popover.Popup
+              className="ob-card z-50 w-[min(340px,calc(100vw-2rem))] cursor-default rounded-[24px] p-3 shadow-2xl backdrop-blur-2xl"
+              initialFocus={false}
+              finalFocus={false}
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={onPointerDown}
+            >
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <Popover.Title className="ob-muted text-xs font-medium uppercase tracking-[0.12em]">Pending Question</Popover.Title>
+                <Popover.Close className="ob-icon-button grid size-7 place-items-center rounded-full text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2" aria-label="Close question">×</Popover.Close>
+              </div>
+              <QuestionRequestCard questionList={pendingQuestion.questions} requestID={pendingQuestion.id} onQuestionReply={onQuestionReply} />
+              {questions.length > 1 ? <p className="ob-muted mt-2 text-xs">{questions.length - 1} more pending question{questions.length === 2 ? '' : 's'} on this ticket.</p> : null}
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
     </div>
   )
 }
@@ -295,4 +390,8 @@ function TaskCardPreview({ sessionId }: { sessionId: string }) {
   const loading = useSessionPreviewLoading(sessionId)
 
   return <p className="ob-muted mt-2 line-clamp-2 min-h-10 break-words text-sm leading-5">{loading && !preview ? 'Loading conversation...' : preview || 'No AI response yet.'}</p>
+}
+
+function PhaseStatusChip({ status }: { status: PhaseMarkerStatus }) {
+  return <span className={`ob-status-chip ob-status-chip-${status.tone} mt-2 rounded-full px-2.5 py-1 text-center text-xs font-semibold`}>{status.label}</span>
 }

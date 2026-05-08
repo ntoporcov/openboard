@@ -201,34 +201,62 @@ function QuestionToolPart({ part, questions, onQuestionReply }: { part: OpenCode
   const questionList = request?.questions ?? (Array.isArray(input?.questions) ? input.questions as OpenCodeQuestionRequest['questions'] : [])
   const answers = Array.isArray(metadata?.answers) ? metadata.answers as string[][] : []
 
-  return <QuestionRequestCard key={request?.id ?? part.id} answers={answers} questionList={questionList} requestID={request?.id} onQuestionReply={onQuestionReply} />
+  return <QuestionRequestCard key={part.id} answers={answers} questionList={questionList} requestID={request?.id} onQuestionReply={onQuestionReply} />
 }
 
 function PendingQuestionRequest({ request, onQuestionReply }: { request: OpenCodeQuestionRequest; onQuestionReply: (requestID: string, answers: string[][]) => Promise<void> }) {
   return <QuestionRequestCard questionList={request.questions} requestID={request.id} onQuestionReply={onQuestionReply} />
 }
 
-function QuestionRequestCard({ questionList, answers = [], requestID, onQuestionReply }: { questionList: OpenCodeQuestionRequest['questions']; answers?: string[][]; requestID?: string; onQuestionReply: (requestID: string, answers: string[][]) => Promise<void> }) {
+export function QuestionRequestCard({ questionList, answers = [], requestID, onQuestionReply }: { questionList: OpenCodeQuestionRequest['questions']; answers?: string[][]; requestID?: string; onQuestionReply: (requestID: string, answers: string[][]) => Promise<void> }) {
   const [selectedAnswers, setSelectedAnswers] = useState<string[][]>(() => questionList.map((_, index) => answers[index] ?? []))
+  const [customDrafts, setCustomDrafts] = useState<string[]>(() => questionList.map((question, index) => customAnswerForQuestion(question, answers[index] ?? [])))
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(() => firstUnansweredQuestionIndex(questionList, answers))
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const activeQuestion = questionList[activeQuestionIndex]
   const activeAnswer = selectedAnswers[activeQuestionIndex] ?? []
 
-  function setQuestionAnswer(index: number, answer: string[]) {
+  function setQuestionAnswer(index: number, answer: string[], customDraft?: string) {
     setSelectedAnswers((currentAnswers) => {
       const nextAnswers = [...currentAnswers]
       nextAnswers[index] = answer
       return nextAnswers
     })
+    if (customDraft !== undefined) {
+      setCustomDrafts((currentDrafts) => {
+        const nextDrafts = [...currentDrafts]
+        nextDrafts[index] = customDraft
+        return nextDrafts
+      })
+    }
+    setSubmitError('')
   }
 
-  const canContinue = activeAnswer.length > 0
-  const canSubmit = !!requestID && questionList.every((_, index) => selectedAnswers[index]?.length > 0)
+  const normalizedAnswers = selectedAnswers.map(normalizeQuestionAnswer)
+  const completed = answers.some((answer) => normalizeQuestionAnswer(answer).length > 0)
+  const canContinue = normalizeQuestionAnswer(activeAnswer).length > 0
+  const canSubmit = !!requestID && questionList.every((_, index) => normalizedAnswers[index]?.length > 0)
   const isLastQuestion = activeQuestionIndex >= questionList.length - 1
 
   function handleContinue() {
     if (!canContinue) return
     setActiveQuestionIndex((currentIndex) => Math.min(currentIndex + 1, questionList.length - 1))
+  }
+
+  async function handleSubmit() {
+    if (!requestID || !canSubmit || submitting) return
+    setSubmitError('')
+    setSubmitting(true)
+    try {
+      await onQuestionReply(requestID, normalizedAnswers)
+      setSubmitted(true)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Unable to submit answer.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (!activeQuestion) return null
@@ -257,16 +285,20 @@ function QuestionRequestCard({ questionList, answers = [], requestID, onQuestion
         question={activeQuestion}
         answer={Array.isArray(answers[activeQuestionIndex]) ? answers[activeQuestionIndex] : undefined}
         selectedAnswer={activeAnswer}
-        onAnswerChange={(answer) => setQuestionAnswer(activeQuestionIndex, answer)}
+        customDraft={customDrafts[activeQuestionIndex] ?? ''}
+        disabled={submitting || submitted || completed}
+        onAnswerChange={(answer, customDraft) => setQuestionAnswer(activeQuestionIndex, answer, customDraft)}
       />
-      {!isLastQuestion ? (
+      {submitted && !completed ? <p className="ob-muted mt-3 text-xs">Answer submitted. Waiting for OpenCode to confirm it on the message.</p> : null}
+      {submitError ? <p className="mt-3 text-xs font-medium text-red-500">{submitError}</p> : null}
+      {!isLastQuestion && !submitted ? (
         <Button className="ob-secondary-button mt-3 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2" type="button" disabled={!canContinue} onClick={handleContinue}>
           Next question
         </Button>
       ) : null}
-      {requestID ? (
-        <Button className="ob-secondary-button mt-3 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2" type="button" disabled={!isLastQuestion || !canSubmit} onClick={() => onQuestionReply(requestID, selectedAnswers)}>
-          Submit answer
+      {requestID && !submitted ? (
+        <Button className="ob-secondary-button mt-3 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2" type="button" disabled={!isLastQuestion || !canSubmit || submitting} onClick={handleSubmit}>
+          {submitting ? 'Submitting...' : 'Submit answer'}
         </Button>
       ) : null}
     </div>
@@ -278,12 +310,23 @@ function firstUnansweredQuestionIndex(questionList: OpenCodeQuestionRequest['que
   return unansweredIndex === -1 ? Math.max(0, questionList.length - 1) : unansweredIndex
 }
 
-function QuestionPrompt({ question, answer, selectedAnswer, onAnswerChange }: { question: OpenCodeQuestionRequest['questions'][number]; answer?: string[]; selectedAnswer: string[]; onAnswerChange: (answer: string[]) => void }) {
+function QuestionPrompt({ question, answer, selectedAnswer, customDraft, disabled, onAnswerChange }: { question: OpenCodeQuestionRequest['questions'][number]; answer?: string[]; selectedAnswer: string[]; customDraft: string; disabled: boolean; onAnswerChange: (answer: string[], customDraft?: string) => void }) {
   const answered = !!answer?.length
+  const locked = answered || disabled
+  const optionLabels = new Set(question.options.map((option) => option.label))
+  const customEnabled = question.custom !== false
 
   function toggleAnswer(label: string) {
-    if (!question.multiple) return onAnswerChange([label])
+    if (!question.multiple) return onAnswerChange([label], '')
     onAnswerChange(selectedAnswer.includes(label) ? selectedAnswer.filter((item) => item !== label) : [...selectedAnswer, label])
+  }
+
+  function changeCustomAnswer(value: string) {
+    const trimmedValue = value.trim()
+    if (!question.multiple) return onAnswerChange(trimmedValue ? [trimmedValue] : [], value)
+
+    const optionAnswers = selectedAnswer.filter((item) => optionLabels.has(item))
+    onAnswerChange(trimmedValue ? [...optionAnswers, trimmedValue] : optionAnswers, value)
   }
 
   return (
@@ -301,7 +344,7 @@ function QuestionPrompt({ question, answer, selectedAnswer, onAnswerChange }: { 
                 selected && 'ob-question-option-selected',
               )}
               type="button"
-              disabled={answered}
+              disabled={locked}
               onClick={() => toggleAnswer(option.label)}
             >
               <span className="ob-question-option-mark mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-[0.62rem] font-semibold">
@@ -319,9 +362,35 @@ function QuestionPrompt({ question, answer, selectedAnswer, onAnswerChange }: { 
           )
         })}
       </div>
+      {customEnabled ? (
+        <label className="grid gap-1.5">
+          <span className="ob-muted text-xs font-medium">Type your own answer</span>
+          <textarea
+            className="ob-input min-h-20 resize-y rounded-2xl px-3 py-2 text-sm leading-5 outline-none transition disabled:cursor-default disabled:opacity-75"
+            disabled={locked}
+            placeholder="Enter a custom reply"
+            value={customDraft}
+            onChange={(event) => changeCustomAnswer(event.target.value)}
+          />
+        </label>
+      ) : null}
       {answered ? <p className="ob-muted text-xs">Answered: {answer.join(', ') || 'No answer'}</p> : null}
     </div>
   )
+}
+
+function normalizeQuestionAnswer(answer: string[] | undefined) {
+  const normalized: string[] = []
+  answer?.forEach((item) => {
+    const trimmedItem = item.trim()
+    if (trimmedItem && !normalized.includes(trimmedItem)) normalized.push(trimmedItem)
+  })
+  return normalized
+}
+
+function customAnswerForQuestion(question: OpenCodeQuestionRequest['questions'][number], answer: string[]) {
+  const optionLabels = new Set(question.options.map((option) => option.label))
+  return answer.find((item) => !optionLabels.has(item)) ?? ''
 }
 
 function PermissionRequestCard({ part, permission, onPermissionReply }: { part?: OpenCodeMessagePart; permission: OpenCodePermissionRequest; onPermissionReply: (requestID: string, reply: PermissionReply) => Promise<void> }) {
