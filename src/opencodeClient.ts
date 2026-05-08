@@ -13,6 +13,12 @@ export type OpenCodeServerConfig = {
   baseUrl: string
   username: string
   password: string
+  requestHeaders: OpenCodeRequestHeader[]
+}
+
+export type OpenCodeRequestHeader = {
+  name: string
+  value: string
 }
 
 export type OpenCodeHealthResponse = {
@@ -154,6 +160,7 @@ export const defaultOpenCodeServerConfig: OpenCodeServerConfig = {
   baseUrl: import.meta.env.VITE_OPENCODE_URL ?? 'http://127.0.0.1:4096',
   username: 'opencode',
   password: '',
+  requestHeaders: [],
 }
 
 const connectionStorageKey = 'openboard.opencode.connection'
@@ -185,7 +192,28 @@ function requestHeaders(config: OpenCodeServerConfig) {
     headers.set('Authorization', authorization)
   }
 
+  normalizeRequestHeaders(config.requestHeaders).forEach((header) => {
+    headers.set(header.name, header.value)
+  })
+
   return headers
+}
+
+export function normalizeRequestHeaders(headers: OpenCodeRequestHeader[] | undefined) {
+  if (!Array.isArray(headers)) {
+    return []
+  }
+
+  return headers.reduce<OpenCodeRequestHeader[]>((normalizedHeaders, header) => {
+    const name = String(header?.name ?? '').trim()
+    const value = String(header?.value ?? '').trim()
+
+    if (name && value) {
+      normalizedHeaders.push({ name, value })
+    }
+
+    return normalizedHeaders
+  }, [])
 }
 
 function requestInit(config: OpenCodeServerConfig, init?: RequestInit) {
@@ -275,6 +303,7 @@ export function loadOpenCodeServerConfig() {
       baseUrl: normalizeBaseUrl(parsed.baseUrl),
       username: parsed.username ?? '',
       password: parsed.password ?? '',
+      requestHeaders: normalizeRequestHeaders(parsed.requestHeaders),
     }
   } catch {
     return null
@@ -286,6 +315,7 @@ export function saveOpenCodeServerConfig(config: OpenCodeServerConfig) {
     ...config,
     baseUrl: normalizeBaseUrl(config.baseUrl),
     username: config.username.trim(),
+    requestHeaders: normalizeRequestHeaders(config.requestHeaders),
   }
 
   localStorage.setItem(connectionStorageKey, JSON.stringify(normalizedConfig))

@@ -4,6 +4,7 @@ import { AppearanceControls } from './components/appearance/AppearanceControls'
 import { KanbanBoard } from './components/board/KanbanBoard'
 import { AreaConfigModal } from './components/modals/AreaConfigModal'
 import { ConnectionModal } from './components/modals/ConnectionModal'
+import { LegalInfoModal, type LegalTopic } from './components/modals/LegalInfoModal'
 import { PluginModal } from './components/modals/PluginModal'
 import { CreatePrepSessionForm } from './components/prep/CreatePrepSessionForm'
 import { PrepLane } from './components/prep/PrepLane'
@@ -83,6 +84,7 @@ function App() {
   const [cards, setCards] = useState<Card[]>([])
   const [connectionModalOpen, setConnectionModalOpen] = useState(() => !loadOpenCodeServerConfig())
   const [pluginModalOpen, setPluginModalOpen] = useState(false)
+  const [legalTopic, setLegalTopic] = useState<LegalTopic | null>(null)
   const [configArea, setConfigArea] = useState<BoardAreaId | null>(null)
   const [prepSessions, setPrepSessions] = useState<OpenBoardPrepSession[]>([])
   const [openedChildSessions, setOpenedChildSessions] = useState<OpenBoardPrepSession[]>([])
@@ -920,6 +922,18 @@ function App() {
           onConfigureArea={setConfigArea}
           onPrepTicketDrop={handlePrepTicketDrop}
         />
+
+        <footer className="relative z-10 flex w-screen flex-col items-center justify-between gap-2 px-4 pb-1 pt-4 text-xs sm:flex-row sm:px-6 lg:px-8">
+          <p className="ob-muted">OpenBoard is a local client for OpenCode.</p>
+          <div className="flex items-center gap-3">
+            <Button className="ob-muted rounded-full px-2 py-1 transition hover:text-[var(--ob-text)] focus-visible:outline-2 focus-visible:outline-offset-2" type="button" onClick={() => setLegalTopic('license')}>
+              License
+            </Button>
+            <Button className="ob-muted rounded-full px-2 py-1 transition hover:text-[var(--ob-text)] focus-visible:outline-2 focus-visible:outline-offset-2" type="button" onClick={() => setLegalTopic('privacy')}>
+              Data & Privacy
+            </Button>
+          </div>
+        </footer>
       </div>
 
       {connectionModalOpen ? (
@@ -932,6 +946,8 @@ function App() {
       ) : null}
 
       {pluginModalOpen ? <PluginModal onClose={() => setPluginModalOpen(false)} /> : null}
+
+      {legalTopic ? <LegalInfoModal topic={legalTopic} onClose={() => setLegalTopic(null)} /> : null}
 
       {configArea ? (
         <AreaConfigModal

@@ -13,6 +13,7 @@ const config: OpenCodeServerConfig = {
   baseUrl: 'http://127.0.0.1:4096/',
   username: 'user',
   password: 'pass',
+  requestHeaders: [],
 }
 
 describe('OpenCode chat client', () => {
@@ -137,6 +138,29 @@ describe('OpenCode chat client', () => {
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
     expect(url.toString()).toBe('http://127.0.0.1:4096/project')
     expect(new Headers(init.headers).get('Authorization')).toBe('Basic dXNlcjpwYXNz')
+  })
+
+  it('sends configured request headers with OpenCode requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([{ id: 'proj_1', worktree: '/Users/example/project', sandboxes: [] }]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listOpenCodeProjects({
+      ...config,
+      requestHeaders: [
+        { name: 'X-OpenBoard', value: 'enabled' },
+        { name: 'Authorization', value: 'Bearer token' },
+      ],
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
+    const headers = new Headers(init.headers)
+    expect(headers.get('X-OpenBoard')).toBe('enabled')
+    expect(headers.get('Authorization')).toBe('Bearer token')
   })
 
   it('loads agents for the selected project directory', async () => {

@@ -1,6 +1,12 @@
 import { Button } from '@base-ui/react/button'
 import { useState, type FormEvent } from 'react'
-import { validateOpenCodeConnection, type OpenCodeHealthResponse, type OpenCodeServerConfig } from '../../opencodeClient'
+import {
+  normalizeRequestHeaders,
+  validateOpenCodeConnection,
+  type OpenCodeHealthResponse,
+  type OpenCodeRequestHeader,
+  type OpenCodeServerConfig,
+} from '../../opencodeClient'
 
 export function ConnectionModal({
   initialConfig,
@@ -14,6 +20,7 @@ export function ConnectionModal({
   onValidated: (config: OpenCodeServerConfig, health: OpenCodeHealthResponse) => void
 }) {
   const [formConfig, setFormConfig] = useState(initialConfig)
+  const [headerText, setHeaderText] = useState(() => requestHeadersToText(initialConfig.requestHeaders))
   const [status, setStatus] = useState<'idle' | 'checking'>('idle')
   const [error, setError] = useState(initialError)
 
@@ -23,8 +30,9 @@ export function ConnectionModal({
     setError(null)
 
     try {
-      const health = await validateOpenCodeConnection(formConfig)
-      onValidated(formConfig, health)
+      const config = { ...formConfig, requestHeaders: parseRequestHeaders(headerText) }
+      const health = await validateOpenCodeConnection(config)
+      onValidated(config, health)
     } catch (validationError) {
       setError(
         validationError instanceof Error
@@ -93,6 +101,21 @@ export function ConnectionModal({
             </label>
           </div>
 
+          <label className="ob-text grid gap-1.5 text-sm font-medium">
+            Request headers
+            <textarea
+              className="ob-input min-h-24 rounded-2xl px-3 py-2.5 text-sm font-normal leading-5 outline-none backdrop-blur-xl transition"
+              value={headerText}
+              placeholder={'Authorization: Bearer token\nX-OpenBoard: true'}
+              spellCheck={false}
+              onChange={(event) => setHeaderText(event.target.value)}
+            />
+            <span className="ob-muted text-xs font-normal leading-4">
+              Optional. Add one header per line as <span className="font-mono">Name: value</span>. These are sent with every
+              OpenCode API request from this browser.
+            </span>
+          </label>
+
           {error ? <p className="ob-danger rounded-2xl px-3 py-2 text-sm leading-5">{error}</p> : null}
 
           <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -115,4 +138,42 @@ export function ConnectionModal({
       </div>
     </div>
   )
+}
+
+function requestHeadersToText(headers: OpenCodeRequestHeader[] | undefined) {
+  return normalizeRequestHeaders(headers)
+    .map((header) => `${header.name}: ${header.value}`)
+    .join('\n')
+}
+
+function parseRequestHeaders(headerText: string) {
+  return headerText.split('\n').reduce<OpenCodeRequestHeader[]>((headers, line, index) => {
+    const trimmedLine = line.trim()
+
+    if (!trimmedLine) {
+      return headers
+    }
+
+    const separatorIndex = trimmedLine.indexOf(':')
+
+    if (separatorIndex <= 0) {
+      throw new Error(`Request header line ${index + 1} must use "Name: value".`)
+    }
+
+    const name = trimmedLine.slice(0, separatorIndex).trim()
+    const value = trimmedLine.slice(separatorIndex + 1).trim()
+
+    if (!value) {
+      throw new Error(`Request header line ${index + 1} must include a value.`)
+    }
+
+    try {
+      new Headers([[name, value]])
+    } catch {
+      throw new Error(`Request header line ${index + 1} has an invalid header name or value.`)
+    }
+
+    headers.push({ name, value })
+    return headers
+  }, [])
 }
