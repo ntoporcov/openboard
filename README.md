@@ -2,6 +2,8 @@
 
 OpenBoard is a lightweight kanban UI for coordinating AI coding work with an OpenCode server.
 
+Deployed app: https://ntoporcov.github.io/openboard/
+
 ## OpenCode Server Setup
 
 When using the GitHub Pages build at `https://ntoporcov.github.io/openboard/`, start OpenCode with that Pages origin allowed for CORS:
