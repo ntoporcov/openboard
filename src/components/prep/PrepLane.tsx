@@ -14,7 +14,6 @@ export function PrepLane({
   activePrepSessionId,
   busySessionIds,
   questionsBySessionId,
-  questionPendingBySessionId,
   agents,
   agentError,
   selectedAgent,
@@ -29,7 +28,6 @@ export function PrepLane({
   activePrepSessionId: string | null
   busySessionIds: Set<string>
   questionsBySessionId: Record<string, OpenCodeQuestionRequest[]>
-  questionPendingBySessionId: Record<string, boolean>
   agents: OpenCodeAgent[]
   agentError: string | null
   selectedAgent: string
@@ -75,7 +73,6 @@ export function PrepLane({
             active={activePrepSessionId === session.id}
             busy={busySessionIds.has(session.id)}
             questions={questionsBySessionId[session.id] ?? []}
-            questionPending={questionPendingBySessionId[session.id] ?? false}
             questionPopoverOpen={openQuestionSessionId === session.id}
             onOpen={onOpen}
             onQuestionReply={onQuestionReply}
@@ -88,9 +85,9 @@ export function PrepLane({
   )
 }
 
-function PrepSessionCard({ session, active, busy, questions, questionPending, questionPopoverOpen, onOpen, onQuestionReply, onQuestionPopoverChange, onTicketDragStart }: { session: OpenBoardPrepSession; active: boolean; busy: boolean; questions: OpenCodeQuestionRequest[]; questionPending: boolean; questionPopoverOpen: boolean; onOpen: (session: OpenBoardPrepSession) => void; onQuestionReply: (requestID: string, answers: string[][]) => Promise<void>; onQuestionPopoverChange: (open: boolean) => void; onTicketDragStart: (event: DragEvent<HTMLDivElement>, session: OpenBoardPrepSession) => void }) {
+function PrepSessionCard({ session, active, busy, questions, questionPopoverOpen, onOpen, onQuestionReply, onQuestionPopoverChange, onTicketDragStart }: { session: OpenBoardPrepSession; active: boolean; busy: boolean; questions: OpenCodeQuestionRequest[]; questionPopoverOpen: boolean; onOpen: (session: OpenBoardPrepSession) => void; onQuestionReply: (requestID: string, answers: string[][]) => Promise<void>; onQuestionPopoverChange: (open: boolean) => void; onTicketDragStart: (event: DragEvent<HTMLDivElement>, session: OpenBoardPrepSession) => void }) {
   const pendingQuestion = questions[0]
-  const hasPendingQuestion = !!pendingQuestion || questionPending
+  const hasPendingQuestion = !!pendingQuestion
   const phaseStatus = useSessionPhaseStatus(session.id, 'prep')
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {

@@ -40,7 +40,7 @@ export function ChatMessages(props: ChatMessagesProps) {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4">
       {props.messages.map((message) => (
         <MessageBubble key={message.info.id} message={message} {...props} />
       ))}
@@ -83,8 +83,8 @@ function MessageBubble({
   if (!errorText && visibleParts.length === 0 && !user) return null
 
   return (
-    <div className={classNames('flex', user ? 'justify-end' : 'justify-start')}>
-      <article className={classNames(user ? 'ob-user-bubble max-w-[78%] rounded-[22px] rounded-br-md px-4 py-2.5' : 'ob-text w-full px-1 py-1')}>
+    <div className={classNames('flex min-w-0', user ? 'justify-end' : 'justify-start')}>
+      <article className={classNames('min-w-0', user ? 'ob-user-bubble max-w-[78%] rounded-[22px] rounded-br-md px-4 py-2.5' : 'ob-text w-full px-1 py-1')}>
         <div className={classNames('mb-1.5 flex items-center justify-between gap-3', user && 'hidden')}>
           <div className="flex min-w-0 items-center gap-2">
             <span className={classNames('grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold', user ? 'bg-white/20 text-white' : 'ob-agent-avatar')}>
@@ -100,7 +100,7 @@ function MessageBubble({
           {message.info.time?.created ? <p className="ob-muted shrink-0 text-xs">{formatRelativeTime(message.info.time.created)}</p> : null}
         </div>
 
-        <div className={classNames('grid gap-2 text-sm leading-5', user ? 'text-white' : 'ob-text')}>
+        <div className={classNames('grid min-w-0 gap-2 text-sm leading-5', user ? 'text-white' : 'ob-text')}>
           {errorText ? <MessageError text={errorText} /> : null}
           {visibleParts.length > 0 ? (
             visibleParts.map((part) => (
@@ -452,7 +452,7 @@ function MarkdownText({ text }: { text: string }) {
   lines.forEach((line) => {
     if (line.trim().startsWith('```')) {
       if (inCodeBlock) {
-        blocks.push(<pre key={`pre-${blocks.length}`} className="ob-card overflow-x-auto rounded-2xl px-3 py-2 text-xs leading-5"><code>{codeLines.join('\n')}</code></pre>)
+        blocks.push(<pre key={`pre-${blocks.length}`} className="ob-card max-w-full overflow-x-auto rounded-2xl px-3 py-2 text-xs leading-5"><code>{codeLines.join('\n')}</code></pre>)
         codeLines = []
       } else {
         flushParagraph(); flushList()
@@ -478,8 +478,8 @@ function MarkdownText({ text }: { text: string }) {
   })
 
   flushParagraph(); flushList()
-  if (inCodeBlock && codeLines.length) blocks.push(<pre key={`pre-${blocks.length}`} className="ob-card overflow-x-auto rounded-2xl px-3 py-2 text-xs leading-5"><code>{codeLines.join('\n')}</code></pre>)
-  return <div className="grid gap-2">{blocks}</div>
+  if (inCodeBlock && codeLines.length) blocks.push(<pre key={`pre-${blocks.length}`} className="ob-card max-w-full overflow-x-auto rounded-2xl px-3 py-2 text-xs leading-5"><code>{codeLines.join('\n')}</code></pre>)
+  return <div className="grid min-w-0 gap-2 break-words">{blocks}</div>
 }
 
 function UserTextPart({ text }: { text: string }) {

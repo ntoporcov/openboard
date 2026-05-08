@@ -122,7 +122,7 @@ export function KanbanBoard({
         <section
           className={classNames(
             'grid w-screen shrink-0 grid-cols-[repeat(4,minmax(190px,1fr))] items-stretch gap-3 px-4 pb-3 sm:px-6 lg:px-8',
-            chatAffordance && 'min-[1380px]:w-[calc(100dvw_-_500px_-_1.75rem)]',
+            chatAffordance && 'min-[1600px]:w-[calc(100dvw_-_500px_-_1.75rem)]',
           )}
           aria-label="Kanban board"
         >
@@ -146,7 +146,7 @@ export function KanbanBoard({
             />
           ))}
         </section>
-        {chatAffordance ? <div className="hidden w-[calc(500px_+_0.75rem)] shrink-0 sm:block min-[1380px]:hidden" aria-hidden="true" /> : null}
+        {chatAffordance ? <div className="hidden w-[calc(500px_+_0.75rem)] shrink-0 sm:block min-[1600px]:hidden" aria-hidden="true" /> : null}
       </div>
 
       <DragOverlay>{activeCard ? <TaskCard card={activeCard} busy={busySessionIds.has(activeCard.id)} questions={[]} overlay /> : null}</DragOverlay>
@@ -239,12 +239,7 @@ function KanbanColumn({
           {cards.length === 0 ? (
             <div className="ob-dropzone rounded-[24px] px-4 py-6 text-center text-sm leading-5 backdrop-blur-xl">
               <p>Drop work here when it is ready for {displayAgentName(activeAgent)}.</p>
-              {usingFallbackAgent ? (
-                <p className="mt-2 text-xs">
-                  Install the OpenBoard plugin to use {displayAgentName(selectedAgent)}, or continue with the default
-                  OpenCode {displayAgentName(fallbackAgent)} agent.
-                </p>
-              ) : null}
+              {usingFallbackAgent ? <p className="mt-2 text-xs">Using the default OpenCode {displayAgentName(fallbackAgent)} agent.</p> : null}
             </div>
           ) : null}
         </div>

@@ -5,7 +5,6 @@ import { KanbanBoard } from './components/board/KanbanBoard'
 import { AreaConfigModal } from './components/modals/AreaConfigModal'
 import { ConnectionModal } from './components/modals/ConnectionModal'
 import { LegalInfoModal, type LegalTopic } from './components/modals/LegalInfoModal'
-import { PluginModal } from './components/modals/PluginModal'
 import { CreatePrepSessionForm } from './components/prep/CreatePrepSessionForm'
 import { PrepLane } from './components/prep/PrepLane'
 import { PrepSidebar } from './components/prep/PrepSidebar'
@@ -83,7 +82,6 @@ import {
 function App() {
   const [cards, setCards] = useState<Card[]>([])
   const [connectionModalOpen, setConnectionModalOpen] = useState(() => !loadOpenCodeServerConfig())
-  const [pluginModalOpen, setPluginModalOpen] = useState(false)
   const [legalTopic, setLegalTopic] = useState<LegalTopic | null>(null)
   const [configArea, setConfigArea] = useState<BoardAreaId | null>(null)
   const [prepSessions, setPrepSessions] = useState<OpenBoardPrepSession[]>([])
@@ -158,16 +156,6 @@ function App() {
   const setSessionMessages = useMessageStreamStore((state) => state.setSessionMessages)
   const updateSessionMessages = useMessageStreamStore((state) => state.updateSessionMessages)
   const clearSessionMessages = useMessageStreamStore((state) => state.clearSessionMessages)
-  const messagesBySession = useMessageStreamStore((state) => state.messagesBySession)
-  const questionPendingBySessionId = useMemo(() => {
-    const pendingBySessionId: Record<string, boolean> = {}
-
-    Object.entries(messagesBySession).forEach(([sessionId, messages]) => {
-      pendingBySessionId[sessionId] = messages.some(hasUnresolvedQuestionToolPart)
-    })
-
-    return pendingBySessionId
-  }, [messagesBySession])
 
   useEffect(() => {
     let cancelled = false
@@ -871,7 +859,7 @@ function App() {
           className={classNames(
             'sticky left-0 right-0 z-20 w-screen px-4 transition-[width] duration-300 sm:px-6 lg:px-8',
             sidebarState !== 'closed'
-              && 'min-[1380px]:right-[calc(500px_+_1.75rem)] min-[1380px]:w-[calc(100dvw_-_500px_-_1.75rem)]',
+              && 'lg:right-[calc(500px_+_1.75rem)] lg:w-[calc(100dvw_-_500px_-_1.75rem)]',
           )}
         >
           <header className="ob-surface mb-4 flex flex-col gap-3 rounded-[32px] px-4 py-3 backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
@@ -909,9 +897,6 @@ function App() {
                   <Button className="ob-icon-button grid size-5 place-items-center rounded-full text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2" type="button" aria-label="Disconnect OpenCode" title="Disconnect OpenCode" onClick={handleDisconnect}>×</Button>
                 ) : null}
               </span>
-              <Button className="ob-secondary-button rounded-full px-4 py-2 text-sm font-medium backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2" type="button" onClick={() => setPluginModalOpen(true)}>
-                Plugin
-              </Button>
             </div>
           </header>
 
@@ -920,7 +905,6 @@ function App() {
             activePrepSessionId={activePrepSessionId}
             busySessionIds={busySessionIds}
             questionsBySessionId={questionsByCardId}
-            questionPendingBySessionId={questionPendingBySessionId}
             agents={boardAgents}
             agentError={displayedAgentError}
             selectedAgent={resolvedAgentSelections.prep}
@@ -973,8 +957,6 @@ function App() {
           onValidated={handleConnectionValidated}
         />
       ) : null}
-
-      {pluginModalOpen ? <PluginModal onClose={() => setPluginModalOpen(false)} /> : null}
 
       {legalTopic ? <LegalInfoModal topic={legalTopic} onClose={() => setLegalTopic(null)} /> : null}
 
@@ -1043,19 +1025,6 @@ function getOpenCodeEventSessionID(event: OpenCodeEvent) {
   if (typeof info?.sessionID === 'string') return info.sessionID
 
   return undefined
-}
-
-function hasUnresolvedQuestionToolPart(message: OpenCodeMessage) {
-  return message.parts.some((part) => {
-    if (part.type !== 'tool' || part.tool !== 'question') return false
-
-    const metadata = part.state?.metadata
-    return !isRecord(metadata) || !('answers' in metadata)
-  })
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function createPrepSessionTitle(instruction: string) {

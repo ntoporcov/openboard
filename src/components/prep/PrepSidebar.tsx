@@ -51,7 +51,7 @@ export function PrepSidebar({
   const sessionPermissions = session
     ? permissions.filter((permission) => permission.sessionID === session.opencodeSessionId)
     : []
-  const hasPendingQuestion = sessionQuestions.length > 0 || messages.some(hasUnresolvedQuestionToolPart)
+  const hasPendingQuestion = sessionQuestions.length > 0
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' })
@@ -135,7 +135,7 @@ export function PrepSidebar({
         </div>
       </header>
 
-      <div className="ob-chat flex-1 overflow-y-auto px-4 py-4">
+      <div className="ob-chat min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
         <ChatMessages
           messages={messages}
           childSessions={childSessions}
@@ -182,17 +182,4 @@ function OptionDetail({ label, value }: { label: string; value: string }) {
       <p className="ob-text mt-1 break-all text-xs font-medium leading-4">{value}</p>
     </div>
   )
-}
-
-function hasUnresolvedQuestionToolPart(message: ReturnType<typeof useSessionMessages>[number]) {
-  return message.parts.some((part) => {
-    if (part.type !== 'tool' || part.tool !== 'question') return false
-
-    const metadata = part.state?.metadata
-    return !isRecord(metadata) || !('answers' in metadata)
-  })
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
