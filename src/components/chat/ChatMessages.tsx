@@ -1,5 +1,6 @@
 import { Button } from '@base-ui/react/button'
 import { useState, type ReactNode } from 'react'
+import { phaseReadinessInstructions } from '../../app/config'
 import {
   type OpenCodeMessage,
   type OpenCodeMessagePart,
@@ -106,6 +107,7 @@ function MessageBubble({
               <MessagePart
                 key={part.id}
                 part={part}
+                user={user}
                 childSessions={childSessions}
                 questions={questions}
                 permissions={permissions}
@@ -126,14 +128,15 @@ function MessageBubble({
 
 function MessagePart({
   part,
+  user,
   childSessions,
   questions,
   permissions,
   onOpenChildSession,
   onQuestionReply,
   onPermissionReply,
-}: Omit<ChatMessagesProps, 'messages' | 'busy'> & { part: OpenCodeMessagePart }) {
-  if (part.type === 'text' && part.text) return <MarkdownText text={part.text} />
+}: Omit<ChatMessagesProps, 'messages' | 'busy'> & { part: OpenCodeMessagePart; user: boolean }) {
+  if (part.type === 'text' && part.text) return user ? <UserTextPart text={part.text} /> : <MarkdownText text={part.text} />
   if (part.type === 'subtask') return <SubagentSessionPart part={part} childSessions={childSessions} onOpenChildSession={onOpenChildSession} />
 
   if (part.type === 'file') {
@@ -408,6 +411,37 @@ function MarkdownText({ text }: { text: string }) {
   flushParagraph(); flushList()
   if (inCodeBlock && codeLines.length) blocks.push(<pre key={`pre-${blocks.length}`} className="ob-card overflow-x-auto rounded-2xl px-3 py-2 text-xs leading-5"><code>{codeLines.join('\n')}</code></pre>)
   return <div className="grid gap-2">{blocks}</div>
+}
+
+function UserTextPart({ text }: { text: string }) {
+  const phaseCheck = splitPhaseReadinessInstruction(text)
+
+  if (!phaseCheck) return <MarkdownText text={text} />
+
+  return (
+    <div className="grid gap-2">
+      {phaseCheck.message ? <MarkdownText text={phaseCheck.message} /> : null}
+      <details className="rounded-2xl border border-white/20 bg-white/10 px-3 py-2 text-xs text-white/80">
+        <summary className="cursor-pointer select-none font-semibold text-white/90 outline-none focus-visible:ring-2 focus-visible:ring-white/45">
+          OpenBoard phase check
+        </summary>
+        <p className="mt-2 whitespace-pre-wrap leading-5">{phaseCheck.instruction}</p>
+      </details>
+    </div>
+  )
+}
+
+function splitPhaseReadinessInstruction(text: string) {
+  const trimmedText = text.trim()
+  const instructions = Object.values(phaseReadinessInstructions)
+  const instruction = instructions.find((candidate) => trimmedText.endsWith(candidate))
+
+  if (!instruction) return null
+
+  return {
+    message: trimmedText.slice(0, -instruction.length).trim(),
+    instruction,
+  }
 }
 
 function renderInlineMarkdown(text: string) {

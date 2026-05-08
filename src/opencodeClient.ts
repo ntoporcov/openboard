@@ -33,6 +33,11 @@ export type OpenCodeSession = {
   }
 }
 
+export type OpenCodeSessionStatus =
+  | { type: 'idle' }
+  | { type: 'busy' }
+  | { type: 'retry'; attempt: number; message: string; next: number }
+
 export type OpenCodeProject = {
   id: string
   worktree: string
@@ -107,6 +112,9 @@ export type OpenCodeEvent = {
   properties?: {
     sessionID?: string
     messageID?: string
+    partID?: string
+    field?: string
+    delta?: string
     info?: unknown
     part?: OpenCodeMessagePart
     [key: string]: unknown
@@ -363,6 +371,17 @@ export async function listOpenCodeSessionChildren(
   return (await response.json()) as OpenCodeSession[]
 }
 
+export async function listOpenCodeSessionStatuses(config: OpenCodeServerConfig) {
+  const response = await fetch(requestUrl(config, '/session/status'), requestInit(config))
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(body || `OpenCode session status request failed with ${response.status}.`)
+  }
+
+  return (await response.json()) as Record<string, OpenCodeSessionStatus>
+}
+
 export async function listOpenCodeProjects(config: OpenCodeServerConfig) {
   const response = await fetch(requestUrl(config, '/project'), requestInit(config))
 
@@ -374,8 +393,8 @@ export async function listOpenCodeProjects(config: OpenCodeServerConfig) {
   return (await response.json()) as OpenCodeProject[]
 }
 
-export async function listOpenCodeAgents(config: OpenCodeServerConfig) {
-  const response = await fetch(requestUrl(config, '/agent'), requestInit(config))
+export async function listOpenCodeAgents(config: OpenCodeServerConfig, input?: { directory?: string }) {
+  const response = await fetch(requestUrl(config, '/agent', { directory: input?.directory }), requestInit(config))
 
   if (!response.ok) {
     const body = await response.text().catch(() => '')

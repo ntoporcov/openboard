@@ -1,28 +1,22 @@
 import { Button } from '@base-ui/react/button'
 import { useState, type FormEvent } from 'react'
-import type { OpenCodeProject } from '../../opencodeClient'
-import { classNames, projectLabel } from '../../app/utils'
 
 export function CreatePrepSessionForm({
   connected,
-  projects,
-  projectError,
+  projectDirectory,
+  projectLabel,
   onClose,
   onCreate,
 }: {
   connected: boolean
-  projects: OpenCodeProject[]
-  projectError: string | null
+  projectDirectory: string
+  projectLabel: string
   onClose: () => void
-  onCreate: (input: { instruction: string; projectDirectory: string }) => Promise<void>
+  onCreate: (input: { instruction: string }) => Promise<void>
 }) {
   const [instruction, setInstruction] = useState('')
-  const [projectDirectory, setProjectDirectory] = useState('')
-  const [manualEntry, setManualEntry] = useState(false)
   const [status, setStatus] = useState<'idle' | 'creating'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const sortedProjects = [...projects].sort((a, b) => projectLabel(a).localeCompare(projectLabel(b)))
-  const canPickProjects = sortedProjects.length > 0 && !manualEntry
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -30,7 +24,7 @@ export function CreatePrepSessionForm({
     setError(null)
 
     try {
-      await onCreate({ instruction, projectDirectory })
+      await onCreate({ instruction })
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to start prep.')
     } finally {
@@ -54,44 +48,10 @@ export function CreatePrepSessionForm({
 
         <form className="grid gap-4" onSubmit={handleSubmit}>
           {!connected ? <p className="ob-warning rounded-2xl px-3 py-2 text-sm leading-5">Connect to OpenCode before starting prep.</p> : null}
-          <label className="ob-text grid gap-1.5 text-sm font-medium">
-            Project
-            {canPickProjects ? (
-              <div className="ob-card grid max-h-[260px] gap-2 overflow-y-auto rounded-[24px] p-2 backdrop-blur-xl">
-                {sortedProjects.map((project) => {
-                  const selected = projectDirectory === project.worktree
-
-                  return (
-                    <button
-                      key={project.id}
-                      className={classNames('rounded-[18px] px-3 py-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2', selected ? 'ob-card-active' : 'ob-card')}
-                      type="button"
-                      onClick={() => setProjectDirectory(project.worktree)}
-                    >
-                      <span className="ob-text block truncate text-sm font-semibold">{projectLabel(project)}</span>
-                      <span className="ob-muted mt-1 block break-all text-xs font-normal leading-4">{project.worktree}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            ) : (
-              <input className="ob-input rounded-2xl px-3 py-2.5 text-sm font-normal outline-none backdrop-blur-xl transition" value={projectDirectory} placeholder="/Users/mininic/openboard" required onChange={(event) => setProjectDirectory(event.target.value)} />
-            )}
-          </label>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="ob-muted text-xs">
-              {projectError ?? (sortedProjects.length > 0 ? `${sortedProjects.length} OpenCode projects loaded.` : 'No OpenCode projects found yet.')}
-            </p>
-            <Button
-              className="ob-secondary-button rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2"
-              type="button"
-              onClick={() => {
-                setProjectDirectory('')
-                setManualEntry((value) => !value)
-              }}
-            >
-              {canPickProjects ? 'Enter path manually' : 'Pick from projects'}
-            </Button>
+          <div className="ob-card rounded-[24px] px-4 py-3 text-sm backdrop-blur-xl">
+            <p className="ob-muted text-xs font-medium uppercase tracking-[0.12em]">Board project</p>
+            <p className="ob-text mt-1 truncate font-semibold">{projectLabel}</p>
+            <p className="ob-muted mt-1 break-all text-xs leading-4">{projectDirectory}</p>
           </div>
           <label className="ob-text grid gap-1.5 text-sm font-medium">
             Instruction

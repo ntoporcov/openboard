@@ -2,14 +2,14 @@ import { Button } from '@base-ui/react/button'
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { PermissionReply, SessionEvent, SidebarState } from '../../app/types'
 import { formatRelativeTime } from '../../app/utils'
-import type { OpenCodeMessage, OpenCodePermissionRequest, OpenCodeQuestionRequest, OpenCodeSession } from '../../opencodeClient'
+import { useSessionMessages } from '../../messageStreamStore'
+import type { OpenCodePermissionRequest, OpenCodeQuestionRequest, OpenCodeSession } from '../../opencodeClient'
 import type { OpenBoardPrepSession } from '../../openboardDb'
 import { ChatMessages } from '../chat/ChatMessages'
 
 export function PrepSidebar({
   mode,
   session,
-  messages,
   childSessions,
   questions,
   permissions,
@@ -24,7 +24,6 @@ export function PrepSidebar({
 }: {
   mode: SidebarState
   session: OpenBoardPrepSession | null
-  messages: OpenCodeMessage[]
   childSessions: OpenCodeSession[]
   questions: OpenCodeQuestionRequest[]
   permissions: OpenCodePermissionRequest[]
@@ -43,6 +42,7 @@ export function PrepSidebar({
   const [deleteConfirming, setDeleteConfirming] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const messages = useSessionMessages(session?.id)
   const latestEvent = events[0]
   const streamLabel = latestEvent ? `${latestEvent.type} ${formatRelativeTime(latestEvent.at)}` : 'Listening'
   const sessionQuestions = session

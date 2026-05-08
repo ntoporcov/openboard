@@ -7,6 +7,7 @@ export function AreaAgentSelect({
   agents,
   areaLabel,
   error,
+  fullWidth = false,
   value,
   fallbackValue,
   onChange,
@@ -14,6 +15,7 @@ export function AreaAgentSelect({
   agents: OpenCodeAgent[]
   areaLabel: string
   error?: string | null
+  fullWidth?: boolean
   value: string
   fallbackValue: string
   onChange: (agentName: string) => void
@@ -28,13 +30,16 @@ export function AreaAgentSelect({
 
   return (
     <div
-      className="relative inline-flex"
+      className={classNames('relative inline-flex', fullWidth && 'w-full')}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false)
       }}
     >
       <Button
-        className="ob-pill inline-flex max-w-[11rem] items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2"
+        className={classNames(
+          'ob-pill inline-flex max-w-[11rem] items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium backdrop-blur-xl transition focus-visible:outline-2 focus-visible:outline-offset-2',
+          fullWidth && 'w-full max-w-none gap-1.5 px-2 py-1 text-[0.68rem]',
+        )}
         type="button"
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -43,14 +48,17 @@ export function AreaAgentSelect({
         onClick={() => setOpen((currentOpen) => !currentOpen)}
       >
         <span className="ob-muted shrink-0" aria-hidden="true">Agent</span>
-        <span className="ob-accent min-w-0 truncate font-semibold">{selectedLabel}</span>
+        <span className={classNames('ob-accent min-w-0 truncate font-semibold', fullWidth && 'ml-auto text-right')}>{selectedLabel}</span>
         {isFallback ? <span className="ob-muted shrink-0 text-[0.65rem]">fallback</span> : null}
         <span className="ob-muted shrink-0 text-[0.65rem]" aria-hidden="true">▾</span>
       </Button>
 
       {open && agentOptions.length > 0 ? (
         <div
-          className="ob-menu absolute right-0 top-[calc(100%+0.35rem)] z-30 grid w-[min(15rem,calc(100vw-2rem))] gap-1 rounded-[18px] p-1.5 text-xs backdrop-blur-2xl"
+          className={classNames(
+            'ob-menu absolute right-0 top-[calc(100%+0.35rem)] z-30 grid w-[min(15rem,calc(100vw-2rem))] gap-1 rounded-[18px] p-1.5 text-xs backdrop-blur-2xl',
+            fullWidth && 'left-0 w-full',
+          )}
           role="listbox"
           aria-label={`Agent for ${areaLabel}`}
         >

@@ -37,6 +37,8 @@ Focus on:
 - Project, branch, environment, and test constraints.
 - Any screenshots, logs, URLs, API contracts, or repro steps needed before planning.
 
+Every response should make the phase status clear. If you think you know enough for the ticket to move into Plan, say that explicitly and explain the compact handoff, assumptions, and risks. If it is not ready for Plan, say what is still missing.
+
 When the work is clear, summarize the refined ticket in a compact handoff and use openboard_move_ticket to move it to plan with assignee openboard-planner. If the user still needs to answer questions, keep the ticket in prep and ask only the most important next questions.`,
   },
   'openboard-planner': {
@@ -54,6 +56,8 @@ Focus on:
 - Data model, UI, integration, and migration impacts.
 - Verification strategy, including exact tests or manual checks.
 - Risks, unknowns, and questions that would block safe implementation.
+
+Every response should make the phase status clear. If you think the plan is ready for Build, say that explicitly and include the implementation handoff. If it is not ready for Build, say what still needs to be resolved.
 
 When the plan is ready, attach a concise handoff note with openboard_note_ticket and use openboard_move_ticket to move the ticket to build with assignee openboard-builder. If requirements are incomplete, move it back to prep with a specific reason.`,
   },
@@ -73,6 +77,8 @@ Focus on:
 - Run appropriate verification when feasible.
 - Leave a clear handoff for review with changed files, verification, and known risks.
 
+Every response should make the phase status clear. If you think the implementation is ready for Review, say that explicitly and include changed files, verification, and known risks. If it is not ready for Review, say what is blocking it.
+
 When implementation is ready, use openboard_note_ticket for the handoff and openboard_move_ticket to move the ticket to review with assignee openboard-reviewer. If the plan is blocked or invalid, move it to plan with a precise reason.`,
   },
   'openboard-reviewer': {
@@ -90,6 +96,8 @@ Focus on findings first:
 - Missing or weak tests for changed behavior.
 - Deviations from repository conventions or the planned design.
 
+Every response should make the phase status clear. If you think the work is ready for Test, say that explicitly and summarize residual risks or testing gaps. If it is not ready for Test, say what must go back to Build.
+
 Use file and line references for findings. If there are no findings, say so and list residual testing gaps. Use openboard_note_ticket to attach findings. Move the ticket to test with assignee openboard-tester when review passes, or back to build with assignee openboard-builder when changes are required.`,
   },
   'openboard-tester': {
@@ -106,6 +114,8 @@ Focus on:
 - Use Playwright or browser MCP tools when available for UI flows.
 - Walk the changed code and test the intended behavior, edge cases, and regressions.
 - Report exact failures with repro steps, logs, and expected versus actual behavior.
+
+Every response should make the phase status clear. If you think the work is ready for Done, say that explicitly and include what passed. If it is not ready for Done, say whether it should go back to Build, Plan, or Prep and why.
 
 If validation passes, attach a test note with openboard_note_ticket and move the ticket to done. If you find implementation gaps, move it back to build with assignee openboard-builder. If you find planning or requirement gaps, move it back to plan or prep with a concise reason.`,
   },

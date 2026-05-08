@@ -138,6 +138,75 @@
   --ob-logo: linear-gradient(145deg, #fab283, #9d7cd8);
 }
 
+.openboard-app[data-theme="linear"] {
+  --ob-bg: #f7f7f8;
+  --ob-text: #171719;
+  --ob-muted: #707077;
+  --ob-muted-strong: #8e8e96;
+  --ob-accent: #5e6ad2;
+  --ob-accent-strong: #4b55c0;
+  --ob-primary: #5e6ad2;
+  --ob-primary-hover: #4f5ac9;
+  --ob-primary-text: #ffffff;
+  --ob-secondary: #ffffff;
+  --ob-secondary-hover: #f1f1f3;
+  --ob-surface: rgb(255 255 255 / 0.78);
+  --ob-surface-strong: rgb(255 255 255 / 0.94);
+  --ob-surface-soft: rgb(244 244 245 / 0.78);
+  --ob-menu: #ffffff;
+  --ob-border: rgb(24 24 27 / 0.1);
+  --ob-border-strong: rgb(24 24 27 / 0.16);
+  --ob-empty: rgb(24 24 27 / 0.045);
+  --ob-input: rgb(255 255 255 / 0.96);
+  --ob-input-border: rgb(24 24 27 / 0.13);
+  --ob-danger-bg: rgb(239 68 68 / 0.07);
+  --ob-danger-border: rgb(239 68 68 / 0.18);
+  --ob-danger-text: #c02f2f;
+  --ob-warning-bg: rgb(245 158 11 / 0.12);
+  --ob-warning-border: rgb(245 158 11 / 0.24);
+  --ob-warning-text: #8a5c12;
+  --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.78), 0 18px 44px rgb(24 24 27 / 0.07);
+  --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.86), 0 10px 24px rgb(24 24 27 / 0.065);
+  --ob-backdrop: radial-gradient(circle at 12% -4%, rgb(94 106 210 / 0.07), transparent 28%), linear-gradient(180deg, #fbfbfc 0%, #f7f7f8 48%, #eeeeF0 100%);
+  --ob-glow: rgb(255 255 255 / 0.62);
+  --ob-logo: linear-gradient(145deg, #5e6ad2, #8a63d2);
+}
+
+.openboard-app[data-theme="linear"][data-mode="dark"],
+.openboard-app[data-theme="linear"][data-mode="system"] {
+  --ob-bg: #101011;
+  --ob-text: #f4f4f5;
+  --ob-muted: #a1a1a6;
+  --ob-muted-strong: #7e7e86;
+  --ob-accent: #8b95ff;
+  --ob-accent-strong: #a8afff;
+  --ob-primary: #8b95ff;
+  --ob-primary-hover: #a0a8ff;
+  --ob-primary-text: #11121a;
+  --ob-secondary: #1b1b1e;
+  --ob-secondary-hover: #242428;
+  --ob-surface: rgb(22 22 24 / 0.82);
+  --ob-surface-strong: rgb(29 29 32 / 0.94);
+  --ob-surface-soft: rgb(19 19 21 / 0.78);
+  --ob-menu: #1d1d20;
+  --ob-border: rgb(255 255 255 / 0.1);
+  --ob-border-strong: rgb(255 255 255 / 0.16);
+  --ob-empty: rgb(255 255 255 / 0.055);
+  --ob-input: rgb(22 22 24 / 0.96);
+  --ob-input-border: rgb(255 255 255 / 0.13);
+  --ob-danger-bg: rgb(248 113 113 / 0.1);
+  --ob-danger-border: rgb(248 113 113 / 0.22);
+  --ob-danger-text: #ffaaa5;
+  --ob-warning-bg: rgb(251 191 36 / 0.12);
+  --ob-warning-border: rgb(251 191 36 / 0.24);
+  --ob-warning-text: #f2ce78;
+  --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 22px 58px rgb(0 0 0 / 0.34);
+  --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 12px 30px rgb(0 0 0 / 0.28);
+  --ob-backdrop: radial-gradient(circle at 12% -4%, rgb(139 149 255 / 0.08), transparent 28%), linear-gradient(180deg, #171719 0%, #111113 48%, #101011 100%);
+  --ob-glow: rgb(255 255 255 / 0.055);
+  --ob-logo: linear-gradient(145deg, #8b95ff, #b58cff);
+}
+
 @media (prefers-color-scheme: light) {
   .openboard-app[data-theme][data-mode="system"] {
     --ob-bg: initial;
@@ -196,6 +265,36 @@
     --ob-backdrop: radial-gradient(circle at 14% 0%, rgb(59 125 216 / 0.14), transparent 30%), radial-gradient(circle at 84% 12%, rgb(214 140 39 / 0.12), transparent 32%), linear-gradient(180deg, #ffffff 0%, #fafafa 52%, #f3f3f3 100%);
     --ob-glow: rgb(255 255 255 / 0.7);
     --ob-logo: linear-gradient(145deg, #3b7dd8, #318795);
+  }
+
+  .openboard-app[data-theme="linear"][data-mode="system"] {
+    --ob-bg: #f7f7f8;
+    --ob-text: #171719;
+    --ob-muted: #707077;
+    --ob-muted-strong: #8e8e96;
+    --ob-accent: #5e6ad2;
+    --ob-accent-strong: #4b55c0;
+    --ob-primary: #5e6ad2;
+    --ob-primary-hover: #4f5ac9;
+    --ob-primary-text: #ffffff;
+    --ob-secondary: #ffffff;
+    --ob-secondary-hover: #f1f1f3;
+    --ob-surface: rgb(255 255 255 / 0.78);
+    --ob-surface-strong: rgb(255 255 255 / 0.94);
+    --ob-surface-soft: rgb(244 244 245 / 0.78);
+    --ob-menu: #ffffff;
+    --ob-border: rgb(24 24 27 / 0.1);
+    --ob-border-strong: rgb(24 24 27 / 0.16);
+    --ob-empty: rgb(24 24 27 / 0.045);
+    --ob-input: rgb(255 255 255 / 0.96);
+    --ob-input-border: rgb(24 24 27 / 0.13);
+    --ob-danger-text: #c02f2f;
+    --ob-warning-text: #8a5c12;
+    --ob-shadow: inset 0 1px 0 rgb(255 255 255 / 0.78), 0 18px 44px rgb(24 24 27 / 0.07);
+    --ob-card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.86), 0 10px 24px rgb(24 24 27 / 0.065);
+    --ob-backdrop: radial-gradient(circle at 12% -4%, rgb(94 106 210 / 0.07), transparent 28%), linear-gradient(180deg, #fbfbfc 0%, #f7f7f8 48%, #eeeeF0 100%);
+    --ob-glow: rgb(255 255 255 / 0.62);
+    --ob-logo: linear-gradient(145deg, #5e6ad2, #8a63d2);
   }
 }
 
@@ -629,6 +728,109 @@
 
 .openboard-app[data-theme="opencode"] [aria-label="Kanban board"] {
   padding-top: 0;
+}
+
+.openboard-app[data-theme="linear"] .ob-surface,
+.openboard-app[data-theme="linear"] .ob-column,
+.openboard-app[data-theme="linear"] .ob-sidebar,
+.openboard-app[data-theme="linear"] .ob-card,
+.openboard-app[data-theme="linear"] .ob-static-card,
+.openboard-app[data-theme="linear"] .ob-pill,
+.openboard-app[data-theme="linear"] .ob-menu,
+.openboard-app[data-theme="linear"] .ob-input,
+.openboard-app[data-theme="linear"] .ob-empty,
+.openboard-app[data-theme="linear"] .ob-dropzone {
+  border-color: var(--ob-border);
+}
+
+.openboard-app[data-theme="linear"] .ob-surface,
+.openboard-app[data-theme="linear"] .ob-column {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.openboard-app[data-theme="linear"] header.ob-surface {
+  border-color: var(--ob-border);
+  background: color-mix(in srgb, var(--ob-surface-strong) 86%, transparent);
+  box-shadow: var(--ob-card-shadow);
+}
+
+.openboard-app[data-theme="linear"] .ob-sidebar {
+  border-left-color: var(--ob-border);
+  background: color-mix(in srgb, var(--ob-bg) 88%, var(--ob-surface-strong) 12%);
+  box-shadow: -18px 0 50px rgb(0 0 0 / 0.08);
+}
+
+.openboard-app[data-theme="linear"] header.ob-surface,
+.openboard-app[data-theme="linear"] section.ob-surface,
+.openboard-app[data-theme="linear"] .ob-column,
+.openboard-app[data-theme="linear"] .ob-sidebar,
+.openboard-app[data-theme="linear"] .ob-card,
+.openboard-app[data-theme="linear"] .ob-static-card {
+  border-radius: 16px;
+}
+
+.openboard-app[data-theme="linear"] .ob-card,
+.openboard-app[data-theme="linear"] .ob-static-card,
+.openboard-app[data-theme="linear"] .ob-pill,
+.openboard-app[data-theme="linear"] .ob-input,
+.openboard-app[data-theme="linear"] .ob-menu,
+.openboard-app[data-theme="linear"] .ob-empty,
+.openboard-app[data-theme="linear"] .ob-dropzone {
+  border-radius: 12px;
+}
+
+.openboard-app[data-theme="linear"] .ob-card,
+.openboard-app[data-theme="linear"] .ob-static-card {
+  background: color-mix(in srgb, var(--ob-surface-strong) 82%, transparent);
+  box-shadow: none;
+}
+
+.openboard-app[data-theme="linear"] .ob-pill,
+.openboard-app[data-theme="linear"] .ob-input,
+.openboard-app[data-theme="linear"] .ob-menu,
+.openboard-app[data-theme="linear"] .ob-empty,
+.openboard-app[data-theme="linear"] .ob-dropzone {
+  box-shadow: none;
+}
+
+.openboard-app[data-theme="linear"] .ob-logo,
+.openboard-app[data-theme="linear"] .ob-primary,
+.openboard-app[data-theme="linear"] .ob-secondary-button,
+.openboard-app[data-theme="linear"] .ob-icon-button {
+  border-radius: 10px;
+}
+
+.openboard-app[data-theme="linear"] .ob-secondary-button {
+  color: var(--ob-text);
+  background: var(--ob-secondary);
+}
+
+.openboard-app[data-theme="linear"] .ob-secondary-button:hover,
+.openboard-app[data-theme="linear"] .ob-icon-button:hover,
+.openboard-app[data-theme="linear"] .ob-menu button:hover {
+  background: var(--ob-secondary-hover);
+}
+
+.openboard-app[data-theme="linear"] .ob-card:hover {
+  border-color: var(--ob-border-strong);
+  background: color-mix(in srgb, var(--ob-surface-strong) 90%, var(--ob-text) 10%);
+}
+
+.openboard-app[data-theme="linear"] .ob-card-active,
+.openboard-app[data-theme="linear"] .ob-column-over {
+  border-color: color-mix(in srgb, var(--ob-accent) 54%, var(--ob-border));
+  background: color-mix(in srgb, var(--ob-surface-strong) 92%, var(--ob-accent) 8%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ob-accent) 22%, transparent);
+}
+
+.openboard-app[data-theme="linear"] [aria-label="Kanban board"] {
+  gap: 1.25rem;
+}
+
+.openboard-app[data-theme="linear"] [aria-label="Prep sessions"] {
+  gap: 0.75rem;
 }
 
 body {

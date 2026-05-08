@@ -1,6 +1,6 @@
-import { agentSelectionsStorageKey, appearanceStorageKey, defaultAgentSelections, defaultAppearanceSettings, defaultPromptTemplates, fallbackAgentSelections, promptTemplatesStorageKey } from './config'
-import type { AppearanceSettings, AreaAgentSelections, AreaPromptTemplates, BoardAreaId } from './types'
-import type { OpenCodeAgent, OpenCodeMessage, OpenCodeProject } from '../opencodeClient'
+import { agentSelectionsStorageKey, appearanceStorageKey, boardProjectDirectoryStorageKey, defaultAgentSelections, defaultAppearanceSettings, defaultPromptTemplates, fallbackAgentSelections, phaseReadinessInstructions, projectAgentSelectionsStorageKey, projectPromptTemplatesStorageKey, promptTemplatesStorageKey } from './config'
+import type { AppearanceSettings, AreaAgentSelections, AreaPromptTemplates, BoardAreaId, ProjectAgentSelections, ProjectPromptTemplates } from './types'
+import type { OpenCodeAgent, OpenCodeMessage, OpenCodeMessagePart, OpenCodeProject } from '../opencodeClient'
 
 export function classNames(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ')
@@ -19,6 +19,98 @@ export function mergeMessages(currentMessages: OpenCodeMessage[], nextMessages: 
 
     return first.info.id.localeCompare(second.info.id)
   })
+}
+
+export function upsertMessageInfo(currentMessages: OpenCodeMessage[], info: OpenCodeMessage['info']) {
+  return sortMessages(
+    currentMessages.some((message) => message.info.id === info.id)
+      ? currentMessages.map((message) => (message.info.id === info.id ? { ...message, info } : message))
+      : [...currentMessages, { info, parts: [] }],
+  )
+}
+
+export function upsertMessagePart(currentMessages: OpenCodeMessage[], part: OpenCodeMessagePart) {
+  return currentMessages.map((message) => {
+    if (message.info.id !== part.messageID) return message
+
+    const parts = message.parts.some((currentPart) => currentPart.id === part.id)
+      ? message.parts.map((currentPart) => (currentPart.id === part.id ? part : currentPart))
+      : [...message.parts, part]
+
+    return { ...message, parts: sortMessageParts(parts) }
+  })
+}
+
+export function applyMessagePartDelta(
+  currentMessages: OpenCodeMessage[],
+  input: { messageID: string; partID: string; field: string; delta: string },
+) {
+  return currentMessages.map((message) => {
+    if (message.info.id !== input.messageID) return message
+
+    return {
+      ...message,
+      parts: message.parts.map((part) => {
+        if (part.id !== input.partID) return part
+
+        const currentValue = part[input.field]
+
+        if (typeof currentValue !== 'string' && currentValue !== undefined) return part
+
+        return { ...part, [input.field]: `${currentValue ?? ''}${input.delta}` }
+      }),
+    }
+  })
+}
+
+export function removeMessage(currentMessages: OpenCodeMessage[], messageID: string) {
+  return currentMessages.filter((message) => message.info.id !== messageID)
+}
+
+export function removeMessagePart(currentMessages: OpenCodeMessage[], input: { messageID: string; partID: string }) {
+  return currentMessages.map((message) => {
+    if (message.info.id !== input.messageID) return message
+
+    return { ...message, parts: message.parts.filter((part) => part.id !== input.partID) }
+  })
+}
+
+export function latestAssistantMessagePreview(messages: OpenCodeMessage[]) {
+  const text = [...messages]
+    .reverse()
+    .filter((message) => message.info.role === 'assistant')
+    .map((message) => message.parts
+      .filter((part) => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('\n\n')
+      .trim())
+    .find(Boolean)
+
+  if (!text) return ''
+
+  return lastSentences(stripMarkdown(text), 2)
+}
+
+export function lastSentences(text: string, count: number) {
+  const normalizedText = text.replace(/\s+/g, ' ').trim()
+  const sentences = normalizedText.match(/[^.!?]+(?:[.!?]+|$)/g)?.map((sentence) => sentence.trim()).filter(Boolean)
+
+  return (sentences?.length ? sentences.slice(-count).join(' ') : normalizedText).trim()
+}
+
+function sortMessages(messages: OpenCodeMessage[]) {
+  return [...messages].sort((first, second) => {
+    const firstCreated = first.info.time?.created ?? 0
+    const secondCreated = second.info.time?.created ?? 0
+
+    if (firstCreated !== secondCreated) return firstCreated - secondCreated
+
+    return first.info.id.localeCompare(second.info.id)
+  })
+}
+
+function sortMessageParts(parts: OpenCodeMessagePart[]) {
+  return [...parts].sort((first, second) => first.id.localeCompare(second.id))
 }
 
 export function upsertById<T extends { id: string }>(items: T[], item: T) {
@@ -43,6 +135,22 @@ export function saveAgentSelections(selections: AreaAgentSelections) {
   localStorage.setItem(agentSelectionsStorageKey, JSON.stringify(selections))
 }
 
+export function loadProjectAgentSelections() {
+  return loadProjectSettings<ProjectAgentSelections>(projectAgentSelectionsStorageKey)
+}
+
+export function saveProjectAgentSelections(selections: ProjectAgentSelections) {
+  localStorage.setItem(projectAgentSelectionsStorageKey, JSON.stringify(selections))
+}
+
+export function loadBoardProjectDirectory() {
+  return localStorage.getItem(boardProjectDirectoryStorageKey) ?? ''
+}
+
+export function saveBoardProjectDirectory(directory: string) {
+  localStorage.setItem(boardProjectDirectoryStorageKey, directory)
+}
+
 export function loadPromptTemplates() {
   const storedValue = localStorage.getItem(promptTemplatesStorageKey)
 
@@ -59,10 +167,69 @@ export function savePromptTemplates(templates: AreaPromptTemplates) {
   localStorage.setItem(promptTemplatesStorageKey, JSON.stringify(templates))
 }
 
-export function renderPromptTemplate(template: string, userMessage: string) {
-  return template.includes('{{user_message}}')
+export function loadProjectPromptTemplates() {
+  return loadProjectSettings<ProjectPromptTemplates>(projectPromptTemplatesStorageKey)
+}
+
+export function saveProjectPromptTemplates(templates: ProjectPromptTemplates) {
+  localStorage.setItem(projectPromptTemplatesStorageKey, JSON.stringify(templates))
+}
+
+function loadProjectSettings<T extends Record<string, unknown>>(storageKey: string) {
+  const storedValue = localStorage.getItem(storageKey)
+
+  if (!storedValue) return {} as T
+
+  try {
+    const parsedValue = JSON.parse(storedValue)
+    return parsedValue && typeof parsedValue === 'object' ? parsedValue as T : {} as T
+  } catch {
+    return {} as T
+  }
+}
+
+export function renderPromptTemplate(template: string, userMessage: string, area?: BoardAreaId) {
+  const rendered = template.includes('{{user_message}}')
     ? template.replaceAll('{{user_message}}', userMessage.trim())
     : `${template.trim()}\n\n${userMessage.trim()}`.trim()
+
+  return area ? appendPhaseReadinessInstruction(rendered, area) : rendered
+}
+
+export function appendPhaseReadinessInstruction(message: string, area: BoardAreaId) {
+  const instruction = phaseReadinessInstructions[area]
+  const trimmedMessage = message.trim()
+
+  if (trimmedMessage.includes(instruction) || includesPhaseMarker(trimmedMessage, area)) return trimmedMessage
+
+  return `${trimmedMessage}\n\n${instruction}`.trim()
+}
+
+const phaseMarkers: Record<BoardAreaId, string[]> = {
+  prep: [],
+  plan: ['[[PLAN_DONE]]', '[[PLAN_CHECK]]'],
+  build: ['[[DEV_DONE]]', '[[DEV_CHECK]]'],
+  review: ['[[REVIEW_APPROVED]]', '[[REVIEW_CHECK]]'],
+  test: ['[[TEST_APPROVED]]', '[[TEST_CHECK]]'],
+}
+
+function includesPhaseMarker(message: string, area: BoardAreaId) {
+  return phaseMarkers[area].some((marker) => message.includes(marker))
+}
+
+function stripMarkdown(text: string) {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/[*_~]{1,3}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function loadAppearanceSettings() {
@@ -72,7 +239,7 @@ export function loadAppearanceSettings() {
 
   try {
     const parsedValue = JSON.parse(storedValue) as Partial<AppearanceSettings>
-    const theme = parsedValue.theme === 'opencode' || parsedValue.theme === 'cupertino'
+    const theme = parsedValue.theme === 'opencode' || parsedValue.theme === 'cupertino' || parsedValue.theme === 'linear'
       ? parsedValue.theme
       : defaultAppearanceSettings.theme
     const mode = parsedValue.mode === 'light' || parsedValue.mode === 'dark' || parsedValue.mode === 'system'

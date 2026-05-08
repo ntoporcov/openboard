@@ -3,6 +3,7 @@ import {
   createOpenCodeId,
   createOpenCodeTextPart,
   deleteOpenCodeSession,
+  listOpenCodeAgents,
   listOpenCodeProjects,
   sendOpenCodePrompt,
   type OpenCodeServerConfig,
@@ -136,6 +137,23 @@ describe('OpenCode chat client', () => {
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit]
     expect(url.toString()).toBe('http://127.0.0.1:4096/project')
     expect(new Headers(init.headers).get('Authorization')).toBe('Basic dXNlcjpwYXNz')
+  })
+
+  it('loads agents for the selected project directory', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([{ name: 'project-agent', mode: 'primary' }]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(listOpenCodeAgents(config, { directory: '/Users/example/project' })).resolves.toEqual([
+      { name: 'project-agent', mode: 'primary' },
+    ])
+
+    const [url] = fetchMock.mock.calls[0] as [URL, RequestInit]
+    expect(url.toString()).toBe('http://127.0.0.1:4096/agent?directory=%2FUsers%2Fexample%2Fproject')
   })
 
   it('deletes the OpenCode session', async () => {

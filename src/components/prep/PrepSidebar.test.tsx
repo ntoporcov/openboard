@@ -78,7 +78,6 @@ async function renderSidebar({ onDelete }: { onDelete: (selectedSession: OpenBoa
       <PrepSidebar
         mode="open"
         session={session}
-        messages={[]}
         childSessions={[]}
         questions={[]}
         permissions={[]}

@@ -19,6 +19,8 @@ export type Column = {
 
 export type AreaAgentSelections = Record<BoardAreaId, string>
 export type AreaPromptTemplates = Record<BoardAreaId, string>
+export type ProjectAgentSelections = Record<string, AreaAgentSelections>
+export type ProjectPromptTemplates = Record<string, AreaPromptTemplates>
 
 export type ConnectionState = {
   config: OpenCodeServerConfig | null
@@ -35,7 +37,7 @@ export type SessionEvent = {
 
 export type SidebarState = 'closed' | 'new' | 'open'
 
-export type AppearanceTheme = 'cupertino' | 'opencode'
+export type AppearanceTheme = 'cupertino' | 'opencode' | 'linear'
 export type AppearanceMode = 'light' | 'dark' | 'system'
 
 export type AppearanceSettings = {

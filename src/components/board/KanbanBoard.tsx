@@ -21,11 +21,12 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@base-ui/react/button'
-import { useMemo, useState, type CSSProperties, type HTMLAttributes } from 'react'
+import { useMemo, useState, type CSSProperties, type HTMLAttributes, type KeyboardEvent } from 'react'
 import type { AreaAgentSelections, Card, Column, ColumnId } from '../../app/types'
 import type { OpenCodeAgent } from '../../opencodeClient'
 import { fallbackAgentSelections } from '../../app/config'
 import { classNames, displayAgentName, selectedAgentName } from '../../app/utils'
+import { useSessionPreview, useSessionPreviewLoading } from '../../messageStreamStore'
 import { AreaAgentSelect } from '../agents/AreaAgentSelect'
 
 export function KanbanBoard({
@@ -33,8 +34,11 @@ export function KanbanBoard({
   cards,
   agents,
   agentSelections,
+  busySessionIds,
   chatAffordance,
   onCardsChange,
+  onCardOpen,
+  onCardStatusChange,
   onAgentSelected,
   onConfigureArea,
   onPrepTicketDrop,
@@ -43,8 +47,11 @@ export function KanbanBoard({
   cards: Card[]
   agents: OpenCodeAgent[]
   agentSelections: AreaAgentSelections
+  busySessionIds: Set<string>
   chatAffordance: boolean
   onCardsChange: (cards: Card[] | ((cards: Card[]) => Card[])) => void
+  onCardOpen: (card: Card) => void
+  onCardStatusChange: (card: Card, nextStatus: ColumnId) => void
   onAgentSelected: (columnId: ColumnId, agentName: string) => void
   onConfigureArea: (columnId: ColumnId) => void
   onPrepTicketDrop: (columnId: ColumnId, prepSessionId: string) => void
@@ -83,6 +90,8 @@ export function KanbanBoard({
 
     if (!nextStatus) return
 
+    const activeCard = cards.find((card) => card.id === activeCardId)
+
     onCardsChange((currentCards) => {
       const oldIndex = currentCards.findIndex((card) => card.id === activeCardId)
       const overIndex = currentCards.findIndex((card) => card.id === overId)
@@ -96,30 +105,40 @@ export function KanbanBoard({
 
       return arrayMove(updatedCards, oldIndex, overIndex)
     })
+
+    if (activeCard && activeCard.status !== nextStatus) onCardStatusChange(activeCard, nextStatus)
   }
 
   return (
     <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex">
-        <section className="grid w-screen shrink-0 grid-cols-[repeat(4,minmax(230px,1fr))] gap-3 px-4 pb-3 sm:px-6 lg:px-8" aria-label="Kanban board">
+        <section
+          className={classNames(
+            'grid w-screen shrink-0 grid-cols-[repeat(4,minmax(190px,1fr))] gap-3 px-4 pb-3 sm:px-6 lg:px-8',
+            chatAffordance && 'min-[1380px]:w-[calc(100dvw_-_500px_-_1.75rem)]',
+          )}
+          aria-label="Kanban board"
+        >
           {columns.map((column) => (
             <KanbanColumn
               key={column.id}
               column={column}
               cards={cards.filter((card) => card.status === column.id)}
               agents={agents}
+              busySessionIds={busySessionIds}
               selectedAgent={agentSelections[column.id]}
               fallbackAgent={fallbackAgentSelections[column.id]}
+              onCardOpen={onCardOpen}
               onAgentSelected={(agentName) => onAgentSelected(column.id, agentName)}
               onConfigure={() => onConfigureArea(column.id)}
               onPrepTicketDrop={(prepSessionId) => onPrepTicketDrop(column.id, prepSessionId)}
             />
           ))}
         </section>
-        {chatAffordance ? <div className="hidden w-[calc(500px_+_0.75rem)] shrink-0 2xl:block" aria-hidden="true" /> : null}
+        {chatAffordance ? <div className="hidden w-[calc(500px_+_0.75rem)] shrink-0 sm:block min-[1380px]:hidden" aria-hidden="true" /> : null}
       </div>
 
-      <DragOverlay>{activeCard ? <TaskCard card={activeCard} overlay /> : null}</DragOverlay>
+      <DragOverlay>{activeCard ? <TaskCard card={activeCard} busy={busySessionIds.has(activeCard.id)} overlay /> : null}</DragOverlay>
     </DndContext>
   )
 }
@@ -128,8 +147,10 @@ function KanbanColumn({
   column,
   cards,
   agents,
+  busySessionIds,
   selectedAgent,
   fallbackAgent,
+  onCardOpen,
   onAgentSelected,
   onConfigure,
   onPrepTicketDrop,
@@ -137,8 +158,10 @@ function KanbanColumn({
   column: Column
   cards: Card[]
   agents: OpenCodeAgent[]
+  busySessionIds: Set<string>
   selectedAgent: string
   fallbackAgent: string
+  onCardOpen: (card: Card) => void
   onAgentSelected: (agentName: string) => void
   onConfigure: () => void
   onPrepTicketDrop: (prepSessionId: string) => void
@@ -164,25 +187,25 @@ function KanbanColumn({
         onPrepTicketDrop(prepSessionId)
       }}
     >
-      <header className="mb-3 flex items-start justify-between gap-4 px-1 py-1">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="ob-text text-[0.95rem] font-semibold tracking-[-0.01em]">{column.title}</h2>
-            <span className="ob-pill ob-accent grid size-6 place-items-center rounded-full text-[0.7rem] font-medium backdrop-blur-xl">{cards.length}</span>
+      <header className="mb-3 flex flex-col gap-2 px-1 py-1">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="ob-text text-[0.95rem] font-semibold tracking-[-0.01em]">{column.title}</h2>
+              <span className="ob-pill ob-accent grid size-6 place-items-center rounded-full text-[0.7rem] font-medium backdrop-blur-xl">{cards.length}</span>
+            </div>
+            <p className="ob-muted mt-0.5 text-sm">{column.description}</p>
           </div>
-          <p className="ob-muted mt-0.5 text-sm">{column.description}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
           <Button className="ob-icon-button grid size-8 place-items-center rounded-full transition focus-visible:outline-2 focus-visible:outline-offset-2" type="button" aria-label={`Configure ${column.title}`} title={`Configure ${column.title}`} onClick={onConfigure}>
             <span aria-hidden="true">&#9881;</span>
           </Button>
-          <AreaAgentSelect agents={agents} areaLabel={column.title} value={selectedAgent} fallbackValue={fallbackAgent} onChange={onAgentSelected} />
         </div>
+        <AreaAgentSelect fullWidth agents={agents} areaLabel={column.title} value={selectedAgent} fallbackValue={fallbackAgent} onChange={onAgentSelected} />
       </header>
 
       <SortableContext items={cardIds} strategy={rectSortingStrategy}>
         <div className="grid min-h-[460px] content-start gap-2.5">
-          {cards.map((card) => <SortableTaskCard key={card.id} card={card} />)}
+          {cards.map((card) => <SortableTaskCard key={card.id} card={card} busy={busySessionIds.has(card.id)} onOpen={onCardOpen} />)}
           {cards.length === 0 ? (
             <div className="ob-dropzone rounded-[24px] px-4 py-6 text-center text-sm leading-5 backdrop-blur-xl">
               <p>Drop work here when it is ready for {displayAgentName(activeAgent)}.</p>
@@ -200,48 +223,76 @@ function KanbanColumn({
   )
 }
 
-function SortableTaskCard({ card }: { card: Card }) {
+function SortableTaskCard({ card, busy, onOpen }: { card: Card; busy: boolean; onOpen: (card: Card) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id })
 
   return (
-    <TaskCard
-      card={card}
-      dragHandleProps={{ ...attributes, ...listeners }}
-      refCallback={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      hidden={isDragging}
+      <TaskCard
+        card={card}
+        busy={busy}
+        onOpen={onOpen}
+        dragProps={{ ...attributes, ...listeners }}
+        refCallback={setNodeRef}
+        style={{ transform: CSS.Transform.toString(transform), transition }}
+        hidden={isDragging}
     />
   )
 }
 
 function TaskCard({
   card,
+  busy,
+  onOpen,
   overlay = false,
   hidden = false,
   refCallback,
   style,
-  dragHandleProps,
+  dragProps,
 }: {
   card: Card
+  busy: boolean
+  onOpen?: (card: Card) => void
   overlay?: boolean
   hidden?: boolean
   refCallback?: (element: HTMLDivElement | null) => void
   style?: CSSProperties
-  dragHandleProps?: HTMLAttributes<HTMLButtonElement>
+  dragProps?: HTMLAttributes<HTMLDivElement>
 }) {
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Enter' || !onOpen) {
+      dragProps?.onKeyDown?.(event)
+      return
+    }
+
+    event.preventDefault()
+    onOpen(card)
+  }
+
   return (
-    <div className={classNames('ob-card group rounded-[24px] p-3 backdrop-blur-xl transition hover:-translate-y-0.5', overlay && 'w-[290px]', hidden && 'opacity-30')} ref={refCallback} style={style}>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="ob-pill ob-accent rounded-full px-2.5 py-1 text-xs font-medium">{card.agent}</span>
-        <Button className="ob-icon-button grid size-8 cursor-grab place-items-center rounded-full transition active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2" type="button" aria-label={`Move ${card.title}`} {...dragHandleProps}>
-          <span className="flex flex-col gap-1">
-            <span className="block h-0.5 w-3 rounded-full bg-current" />
-            <span className="block h-0.5 w-3 rounded-full bg-current" />
-          </span>
-        </Button>
+    <div
+      className={classNames('ob-card group min-w-0 cursor-grab rounded-[24px] p-3 backdrop-blur-xl transition hover:-translate-y-0.5 active:cursor-grabbing', overlay && 'w-[290px]', hidden && 'opacity-30')}
+      ref={refCallback}
+      style={style}
+      {...dragProps}
+      onClick={() => onOpen?.(card)}
+      onKeyDown={handleKeyDown}
+    >
+      <div className="flex items-start gap-2">
+        {busy ? <BusyDot /> : null}
+        <h3 className="ob-text min-w-0 break-words text-[0.96rem] font-semibold leading-snug tracking-[-0.01em]">{card.title}</h3>
       </div>
-      <h3 className="ob-text text-[0.96rem] font-semibold leading-snug tracking-[-0.01em]">{card.title}</h3>
-      <p className="ob-muted mt-2 text-sm leading-5">{card.prompt}</p>
+      <TaskCardPreview sessionId={card.id} />
     </div>
   )
+}
+
+function BusyDot() {
+  return <span className="mt-1.5 size-2 shrink-0 animate-pulse rounded-full bg-[var(--ob-primary)] shadow-[0_0_0_3px_rgb(0_122_255_/_0.12)]" aria-label="Chat is busy" />
+}
+
+function TaskCardPreview({ sessionId }: { sessionId: string }) {
+  const preview = useSessionPreview(sessionId)
+  const loading = useSessionPreviewLoading(sessionId)
+
+  return <p className="ob-muted mt-2 line-clamp-2 min-h-10 break-words text-sm leading-5">{loading && !preview ? 'Loading conversation...' : preview || 'No AI response yet.'}</p>
 }

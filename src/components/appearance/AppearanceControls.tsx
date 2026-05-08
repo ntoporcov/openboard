@@ -19,6 +19,7 @@ export function AppearanceControls({
         >
           <option value="cupertino">Cupertino</option>
           <option value="opencode">OpenCode</option>
+          <option value="linear">Linear</option>
         </select>
       </label>
       <label className="ob-pill inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-xs font-medium backdrop-blur-xl">

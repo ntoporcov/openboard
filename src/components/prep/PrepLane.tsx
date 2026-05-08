@@ -3,12 +3,14 @@ import type { DragEvent } from 'react'
 import type { OpenCodeAgent } from '../../opencodeClient'
 import type { OpenBoardPrepSession } from '../../openboardDb'
 import { fallbackAgentSelections } from '../../app/config'
-import { classNames, formatRelativeTime } from '../../app/utils'
+import { classNames } from '../../app/utils'
+import { useSessionPreview, useSessionPreviewLoading } from '../../messageStreamStore'
 import { AreaAgentSelect } from '../agents/AreaAgentSelect'
 
 export function PrepLane({
   prepSessions,
   activePrepSessionId,
+  busySessionIds,
   agents,
   agentError,
   selectedAgent,
@@ -20,6 +22,7 @@ export function PrepLane({
 }: {
   prepSessions: OpenBoardPrepSession[]
   activePrepSessionId: string | null
+  busySessionIds: Set<string>
   agents: OpenCodeAgent[]
   agentError: string | null
   selectedAgent: string
@@ -54,12 +57,12 @@ export function PrepLane({
         </div>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-1" aria-label="Prep sessions">
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 py-1.5" aria-label="Prep sessions">
         {prepSessions.map((session) => (
           <button
             key={session.id}
             className={classNames(
-              'ob-card min-w-[280px] rounded-[24px] px-4 py-3 text-left backdrop-blur-xl transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2',
+              'ob-card w-[280px] max-w-[280px] shrink-0 rounded-[24px] px-4 py-3 text-left backdrop-blur-xl transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2',
               activePrepSessionId === session.id && 'ob-card-active',
             )}
             type="button"
@@ -67,15 +70,25 @@ export function PrepLane({
             onDragStart={(event) => onTicketDragStart(event, session)}
             onClick={() => onOpen(session)}
           >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="ob-pill ob-accent rounded-full px-2.5 py-1 text-xs font-medium backdrop-blur-xl">{session.status}</span>
-              <span className="ob-muted text-xs">{formatRelativeTime(session.updatedAt)}</span>
+            <div className="flex items-start gap-2">
+              {busySessionIds.has(session.id) ? <BusyDot /> : null}
+              <p className="ob-text min-w-0 truncate text-sm font-semibold">{session.title}</p>
             </div>
-            <p className="ob-text truncate text-sm font-semibold">{session.title}</p>
-            <p className="ob-muted mt-1 truncate text-xs">{session.projectDirectory}</p>
+            <SessionPreview sessionId={session.id} />
           </button>
         ))}
       </div>
     </section>
   )
+}
+
+function BusyDot() {
+  return <span className="mt-1.5 size-2 shrink-0 animate-pulse rounded-full bg-[var(--ob-primary)] shadow-[0_0_0_3px_rgb(0_122_255_/_0.12)]" aria-label="Chat is busy" />
+}
+
+function SessionPreview({ sessionId }: { sessionId: string }) {
+  const preview = useSessionPreview(sessionId)
+  const loading = useSessionPreviewLoading(sessionId)
+
+  return <p className="ob-muted mt-1 line-clamp-2 min-h-8 break-words text-xs leading-4">{loading && !preview ? 'Loading conversation...' : preview || 'No AI response yet.'}</p>
 }
