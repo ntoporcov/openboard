@@ -908,22 +908,24 @@ function App() {
           />
         </div>
 
-        <KanbanBoard
-          columns={columns}
-          cards={visibleCards}
-          agents={boardAgents}
-          agentSelections={resolvedAgentSelections}
-          busySessionIds={busySessionIds}
-          chatAffordance={sidebarState !== 'closed'}
-          onCardsChange={handleCardsChange}
-          onCardOpen={handleOpenCard}
-          onCardStatusChange={handleCardStatusChange}
-          onAgentSelected={handleAgentSelected}
-          onConfigureArea={setConfigArea}
-          onPrepTicketDrop={handlePrepTicketDrop}
-        />
+        <div className="flex min-h-0 flex-1">
+          <KanbanBoard
+            columns={columns}
+            cards={visibleCards}
+            agents={boardAgents}
+            agentSelections={resolvedAgentSelections}
+            busySessionIds={busySessionIds}
+            chatAffordance={sidebarState !== 'closed'}
+            onCardsChange={handleCardsChange}
+            onCardOpen={handleOpenCard}
+            onCardStatusChange={handleCardStatusChange}
+            onAgentSelected={handleAgentSelected}
+            onConfigureArea={setConfigArea}
+            onPrepTicketDrop={handlePrepTicketDrop}
+          />
+        </div>
 
-        <footer className="relative z-10 flex w-screen flex-col items-center justify-between gap-2 px-4 pb-1 pt-4 text-xs sm:flex-row sm:px-6 lg:px-8">
+        <footer className="relative z-10 mt-auto flex w-screen flex-col items-center justify-between gap-2 px-4 pb-1 pt-4 text-xs sm:flex-row sm:px-6 lg:px-8">
           <p className="ob-muted">OpenBoard is a local client for OpenCode.</p>
           <div className="flex items-center gap-3">
             <Button className="ob-muted rounded-full px-2 py-1 transition hover:text-[var(--ob-text)] focus-visible:outline-2 focus-visible:outline-offset-2" type="button" onClick={() => setLegalTopic('license')}>

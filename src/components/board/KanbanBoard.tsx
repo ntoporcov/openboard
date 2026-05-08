@@ -111,10 +111,10 @@ export function KanbanBoard({
 
   return (
     <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex">
+      <div className="flex flex-1 min-h-0">
         <section
           className={classNames(
-            'grid w-screen shrink-0 grid-cols-[repeat(4,minmax(190px,1fr))] gap-3 px-4 pb-3 sm:px-6 lg:px-8',
+            'grid w-screen shrink-0 grid-cols-[repeat(4,minmax(190px,1fr))] items-stretch gap-3 px-4 pb-3 sm:px-6 lg:px-8',
             chatAffordance && 'min-[1380px]:w-[calc(100dvw_-_500px_-_1.75rem)]',
           )}
           aria-label="Kanban board"
@@ -173,7 +173,7 @@ function KanbanColumn({
 
   return (
     <article
-      className={classNames('ob-column min-h-[560px] rounded-[32px] p-3 backdrop-blur-2xl transition-colors', isOver && 'ob-column-over')}
+      className={classNames('ob-column flex min-h-[560px] flex-col rounded-[32px] p-3 backdrop-blur-2xl transition-colors', isOver && 'ob-column-over')}
       ref={setNodeRef}
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes('application/x-openboard-prep-session')) event.preventDefault()
@@ -204,7 +204,7 @@ function KanbanColumn({
       </header>
 
       <SortableContext items={cardIds} strategy={rectSortingStrategy}>
-        <div className="grid min-h-[460px] content-start gap-2.5">
+        <div className="grid flex-1 content-start gap-2.5">
           {cards.map((card) => <SortableTaskCard key={card.id} card={card} busy={busySessionIds.has(card.id)} onOpen={onCardOpen} />)}
           {cards.length === 0 ? (
             <div className="ob-dropzone rounded-[24px] px-4 py-6 text-center text-sm leading-5 backdrop-blur-xl">
